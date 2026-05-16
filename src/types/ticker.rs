@@ -87,6 +87,46 @@ impl Ticker {
         ((self.current_value as i16) - (self.start_value as i16)).abs() as i8       // Have to cast a bit extra due to the possibility that start value is i8::MIN (-128 flipping to 128 is out of i8 range).
     }
 
+    /// Will return 0 if the elapsed value is greater than or equal to the start value.
+    /// In every other case this returns a simulated countdown value based on (start_value - elapsed_value).
+    ///
+    /// # IMPORTANT
+    /// **Countdown logic is very limited in Tickers due to how they are designed, specifically in
+    /// regards to the loop.  This doesn't make them weak, matter of fact their design is what allows
+    /// them to create good countdown logic in larger tick-based structures while still being memory
+    /// efficient.  If the intention is to create a timer of some sort for countdown purposes, then
+    /// I recommend using the Chronolog instead as its better suited for it.  Also, if you can think of a
+    /// way to get around this problem while still keeping Tickers memory efficient, then I'm all ears.**
+    ///
+    /// ## LOOP DESIGN MEANS FOR POOR COUNTDOWN LOGIC
+    /// Due to how ticking resets current_value to 0 when total ticks exceed the i8::MAX value,
+    /// countdowns only go up to 127 seconds.  If we were to set our start_value to 120, then after
+    /// 7 seconds pass the i8::MAX wall would be hit and the get_elapsed_value() calculation
+    /// would essentially reset as well since it uses current_value to get its result.
+    ///
+    /// ## NEGATIVE START_VALUES
+    /// Since get_elapsed_value() always returns positives, this will cause get_countdown_value() to
+    /// return 0 if the start_value is a negative number.  Avoid using negative values, or setting/modifying
+    /// start_value to become negative, if you want reliable countdown usage when solely using a Ticker.
+    ///
+    /// ## WHAT START_VALUES ARE GOOD FOR COUNTDOWN IN TICKERS?
+    /// If you still want to use Tickers for countdowns, then I recommend any number between 27 to 117 for the start_value.
+    /// The maximum countdown duration is (127 - start_value) seconds.
+    ///
+    /// 27 for the start_value is a 100 second countdown.
+    ///
+    /// 77 for the start_value is a 50 second countdown.
+    ///
+    /// 117 for the start_value is a 10 second countdown.
+    pub fn get_countdown_value(&self) -> i8 {
+        if self.get_elapsed_value() >= self.start_value {
+            0
+        }
+        else {
+            self.start_value - self.get_elapsed_value()
+        }
+    }
+
     /// Returns the digit in the ones-place of the current_value.
     pub fn get_digit(&self) -> i8 {
         self.digit
