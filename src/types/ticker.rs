@@ -177,9 +177,9 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
         let min = start_value.min(end_value);
         let max = start_value.max(end_value);
 
-        check_if_value_is_within_range(V::MIN, start_value, V::MAX);
-        check_if_value_is_within_range(min, current_value, max);
-        check_if_value_is_within_range(V::MIN, end_value, V::MAX);
+        check_if_value_is_within_range(start_value, V::MIN, V::MAX);
+        check_if_value_is_within_range(current_value, min, max);
+        check_if_value_is_within_range(end_value, V::MIN, V::MAX);
 
         Self {
             start_value,

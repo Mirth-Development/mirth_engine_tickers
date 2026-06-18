@@ -1,474 +1,1431 @@
 
+// Imports
 use bevy::prelude::*;
-use mirth_engine_testing_tools::{check_condition, TestSet};
+use mirth_engine_testing_tools::{check_condition, TestColors, TestSet};
 use bevy_time_structures::{Ticker, TimeStructures};
 
-// Tests for Ticker
 fn main() {
     App::new()
+
         .add_plugins(DefaultPlugins)
-        .add_plugins(TimeStructures {})
+        .add_plugins(TimeStructures{})
 
         // One and done tests that are NOT intended to panic.
         .add_systems(Startup, (
+            setup_update_test_ticker,
+            setup_update_test_paused_ticker,
+            setup_update_test_looping_ticker,
+            setup_update_test_countdown_ticker,
+            setup_update_test_accrual_ticker,
             test_default,
             test_new,
-            test_new_with_duration,
-            test_new_with_countdown,
             test_getters,
             test_set_current_value,
             test_set_start_value,
-            test_add_to_start,
-            test_add_to_current,
+            test_set_end_value,
+            test_add_to_start_value,
+            test_add_to_current_value,
+            test_add_to_end_value,
+            test_add_to_interval,
             test_reset,
-            test_set_to_zero,
             test_set_current_to_min,
             test_set_current_to_max,
-            test_comparisons,
-            test_get_distance_from_start,
-            test_get_countdown_value,
-            test_pause_unpause,
-            test_ticker_states,
-            test_tick_loop,
         ).chain().in_set(TestSet::Set0))
+
+        // One and done tests that are NOT intended to panic.
+        .add_systems(Startup, (
+            test_equal_methods,
+            test_difference_methods,
+            test_digit_methods,
+            test_digit_with_dda_methods,
+            test_pause_unpause,
+            test_looping_toggle,
+            test_tick_direction_toggle,
+            test_frame_spike_toggle,
+            test_percentage_from_start,
+            test_percentage_from_end,
+            test_tick_counts_up,
+            test_tick_counts_down,
+            test_tick_loops_at_boundary,
+            test_tick_paused_does_not_advance,
+            test_tick_frame_spike_handling,
+        ).chain().in_set(TestSet::Set1))
 
         // One and done tests that are intended to panic.
         .add_systems(Startup, (
             test_new_panic_guard,
-            test_countdown_panic_guard,
-        ).chain().in_set(TestSet::Set1))
+        ).chain().in_set(TestSet::Set2))
+
+        // Tests that occur on every frame.
+        // IMPORTANT: Comment this block out to prevent these tests.
+        .add_systems(Update, (
+            // test_update_ticker_advances_forward,
+            // test_update_ticker_stays_within_range,
+            // test_update_paused_ticker_never_advances,
+            // test_update_looping_ticker_never_exceeds_end,
+            // test_update_countdown_ticker_never_increases,
+            // test_update_accrual_ticker_has_not_fired_early,
+            test_update_print_current_value,
+        ).chain().in_set(TestSet::Set3))
 
         .configure_sets(Startup, TestSet::Set0.before(TestSet::Set1))
+        .configure_sets(Startup, TestSet::Set1.before(TestSet::Set2))
+        .configure_sets(Startup, TestSet::Set1.before(TestSet::Set3))
 
         .run();
 }
 
-// ─── Safety Note ─────────────────────────────────────────────────────────────
-//
-// ticker_ticking runs every frame and queries for Ticker components attached to
-// entities via Query<&mut Ticker>.  Every test below constructs Tickers as plain
-// local stack values — they are never spawned into the ECS — so ticker_ticking
-// will never see or mutate them.  Tests that need to verify tick() behaviour call
-// it directly with a known std::time::Duration instead of relying on real elapsed
-// time, keeping results fully deterministic regardless of frame timing.
-//
-// ─────────────────────────────────────────────────────────────────────────────
 
-/// Verifies that Ticker::default() produces a zero-state Ticker.
-///
-/// All numeric fields should be 0 and the state should be Ticking, confirming
-/// that the default constructor is a clean, ready-to-use baseline with no
-/// residual values.
+
+// ####################################### SAFETY NOTE ########################################### //
+//
+// ticker_ticking runs every frame and queries for Ticker<V, P> components attached
+// to entities via Query<&mut Ticker<V, P>>.  Every test below constructs Tickers as
+// plain local stack values — they are never spawned into the ECS — so ticker_ticking
+// will never see or mutate them.  Tests that need to verify tick() behavior call it
+// directly with a known f32 delta instead of relying on real elapsed time, keeping
+// results fully deterministic regardless of frame timing.
+//
+// ############################################################################################## //
+
+
+
+// ##################################### CONSTRUCTION TESTS ###################################### //
+/// Verifies that Ticker::default() produces the documented baseline state:
+/// start_value = 0, current_value = 0, end_value = 100, interval = 1.0,
+/// not paused, looping, ticking up, and handling frame spikes.
 fn test_default() {
-    let t = Ticker::default();
-    check("default::current_value is 0",t.get_current_value() == 0,                     "expected 0");
-    check("default::start_value is 0",  t.get_start_value()   == 0,                     "expected 0");
-    check("default::digit is 0",        t.get_digit()         == 0,                     "expected 0");
-    check("default::state is Ticking",  t.get_state()         == &TickerStates::Ticking,"expected Ticking");
+
+    let ticker: Ticker<i32, f32> = Ticker::default();
+    check_condition(
+        ticker.start_value() == 0,
+        "default::start_value is 0",
+        "expected 0"
+    );
+
+
+    check_condition(
+        ticker.current_value() == 0,
+        "default::current_value is 0",
+        "expected 0"
+    );
+
+
+    check_condition(
+        ticker.end_value() == 100,
+        "default::end_value is 100",
+        "expected 100"
+    );
+
+
+    check_condition(
+        ticker.interval() == 1.0,
+        "default::interval is 1.0",
+        "expected 1.0"
+    );
+
+
+    check_condition(
+        !ticker.is_paused(),
+        "default::is not paused",
+        "expected unpaused"
+    );
+
+
+    check_condition(
+        ticker.is_looping(),
+        "default::is looping",
+        "expected looping"
+    );
+
+
+    check_condition(
+        ticker.is_ticking_up(),
+        "default::is ticking up",
+        "expected ticking up"
+    );
+
+
+    check_condition(
+        ticker.is_handling_frame_spikes(),
+        "default::is handling frame spikes",
+        "expected frame spike handling on"
+    );
 }
 
-/// Verifies that Ticker::new() correctly initializes all fields from a given starting value.
-///
-/// Covers a positive value (42), a negative value (-37), and zero to confirm that
-/// current_value, start_value, digit (ones-place of abs(start)), and state are all
-/// set correctly regardless of the sign of the input.
+/// Verifies that Ticker::new() correctly initializes all fields from the given values,
+/// covering a positive start_value, a negative one, and a current_value that differs
+/// from start_value but still lies within range.
 fn test_new() {
-    let t = Ticker::new(42);
-    check("new::current_value matches start",   t.get_current_value() == 42,                    "expected 42");
-    check("new::start_value set correctly",     t.get_start_value()   == 42,                    "expected 42");
-    check("new::digit is ones-place of 42",     t.get_digit()         == 2,                     "expected 2");
-    check("new::state is Ticking",              t.get_state()         == &TickerStates::Ticking,"expected Ticking");
 
-    let t_neg = Ticker::new(-37);
-    check("new::negative start_value",          t_neg.get_current_value() == -37,                   "expected -37");
-    check("new::digit of -37 is 7 (abs %10)",   t_neg.get_digit()         == 7,                     "expected 7");
-    check("new::negative state is Ticking",     t_neg.get_state()         == &TickerStates::Ticking,"expected Ticking");
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker.start_value() == 0,
+        "new::start_value set correctly",
+        "expected 0"
+    );
 
-    let t_zero = Ticker::new(0);
-    check("new::zero start_value",              t_zero.get_current_value() == 0, "expected 0");
+
+    check_condition(
+        ticker.current_value() == 0,
+        "new::current_value set correctly",
+        "expected 0"
+    );
+
+
+    check_condition(
+        ticker.end_value() == 100,
+        "new::end_value set correctly",
+        "expected 100"
+    );
+
+
+    let ticker_negative: Ticker<i32, f32> = Ticker::new(
+        -37,
+        -37,
+        50,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_negative.start_value() == -37,
+        "new::negative start_value",
+        "expected -37"
+    );
+
+
+    check_condition(
+        ticker_negative.current_value() == -37,
+        "new::negative current_value",
+        "expected -37"
+    );
+
+
+    let ticker_mid: Ticker<i32, f32> = Ticker::new(
+        0,
+        40,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_mid.current_value() == 40,
+        "new::current_value differs from start_value",
+        "expected 40"
+    );
 }
+// ############################################################################################## //
 
-/// Verifies that Ticker::new_with_duration() correctly initializes fields when a custom
-/// timer duration is provided.
-///
-/// The internal timer duration cannot be directly inspected without ticking, so this
-/// test confirms that start_value, current_value, digit, and state are all set as
-/// expected, and that construction completes without a panic.
-fn test_new_with_duration() {
-    let t = Ticker::new_with_duration(10, 0.5);
-    check("new_with_duration::current_value",   t.get_current_value() == 10,                    "expected 10");
-    check("new_with_duration::start_value",     t.get_start_value()   == 10,                    "expected 10");
-    check("new_with_duration::digit",           t.get_digit()         == 0,                     "expected 0");
-    check("new_with_duration::state is Ticking",t.get_state()         == &TickerStates::Ticking, "expected Ticking");
 
-    // Timer duration cannot be directly inspected without ticking, so we just
-    // confirm construction succeeds and values are correct.
-    pass("new_with_duration::constructed without panic");
-}
 
-/// Verifies that Ticker::new_with_countdown() derives the correct start_value from
-/// the given duration using the formula: start_value = LOOP_POINT - duration.
-///
-/// A duration of 10 should produce start_value = 91 (101 - 10), and the minimum
-/// valid duration of 1 should produce start_value = 100 (101 - 1).  Also confirms
-/// that digit and state are initialized correctly.
-fn test_new_with_countdown() {
-    // LOOP_POINT = 101; duration = 10 => start_value = 91
-    let t = Ticker::new_with_countdown(10);
-    check("new_with_countdown::start_value is 101-10=91",   t.get_start_value()   == 91,                    "expected 91");
-    check("new_with_countdown::current_value is 91",        t.get_current_value() == 91,                    "expected 91");
-    check("new_with_countdown::digit is 1 (91 % 10)",       t.get_digit()         == 1,                     "expected 1");
-    check("new_with_countdown::state is Ticking",           t.get_state()         == &TickerStates::Ticking, "expected Ticking");
-
-    // countdown of 1 => start_value = 100
-    let t2 = Ticker::new_with_countdown(1);
-    check("new_with_countdown::min duration start_value=100", t2.get_start_value() == 100, "expected 100");
-}
-
-/// Verifies that all getter methods return the correct values for a freshly constructed Ticker.
-///
-/// Covers get_current_value(), get_start_value(), get_digit(), get_state(), and
-/// get_timer().  Since get_timer() exposes an internal Bevy Timer with no straightforward
-/// value to assert against at construction time, it is only checked to confirm that it
-/// returns without panicking.
+// ####################################### GETTER TESTS ########################################## //
+/// Verifies that all getter methods return the values set at construction.
 fn test_getters() {
-    let t = Ticker::new(55);
-    check("get_current_value",  t.get_current_value() == 55,                    "expected 55");
-    check("get_start_value",    t.get_start_value()   == 55,                    "expected 55");
-    check("get_digit",          t.get_digit()         == 5,                     "expected 5");
-    check("get_state",          t.get_state()         == &TickerStates::Ticking, "expected Ticking");
 
-    // get_timer: just confirm it returns without panic
-    let _ = t.get_timer();
-    pass("get_timer::returns reference without panic");
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        10,
+        25,
+        55,
+        2.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker.start_value() == 10,
+        "get_start_value",
+        "expected 10"
+    );
+
+
+    check_condition(
+        ticker.current_value() == 25,
+        "get_current_value",
+        "expected 25"
+    );
+
+
+    check_condition(
+        ticker.end_value() == 55,
+        "get_end_value",
+        "expected 55"
+    );
+
+
+    check_condition(
+        ticker.interval() == 2.0,
+        "get_interval",
+        "expected 2.0"
+    );
+
+
+    check_condition(
+        !ticker.is_paused(),
+        "get_is_paused",
+        "expected false"
+    );
+
+
+    check_condition(
+        ticker.is_looping(),
+        "get_is_looping",
+        "expected true"
+    );
 }
+// ############################################################################################## //
 
-/// Verifies that set_current_value() correctly updates current_value across a range of inputs.
-///
-/// Tests a mid-range positive value, a negative value, and both boundary values
-/// (TICKER_MAX_VALUE = 100, TICKER_MIN_VALUE = -100) to confirm the setter accepts
-/// the full valid range without panicking.
+
+
+// ####################################### SETTER TESTS ########################################## //
+/// Verifies that set_current_value() updates current_value, including clamping
+/// to the start_value/end_value range rather than panicking on out-of-range input.
 fn test_set_current_value() {
-    let mut t = Ticker::new(0);
-    t.set_current_value(77);
-    check("set_current_value::value updated", t.get_current_value() == 77, "expected 77");
 
-    t.set_current_value(-50);
-    check("set_current_value::negative value", t.get_current_value() == -50, "expected -50");
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
 
-    t.set_current_value(100);
-    check("set_current_value::max boundary", t.get_current_value() == 100, "expected 100");
+    ticker.set_current_value(77);
+    check_condition(
+        ticker.current_value() == 77,
+        "set_current_value::value updated",
+        "expected 77"
+    );
 
-    t.set_current_value(-100);
-    check("set_current_value::min boundary", t.get_current_value() == -100, "expected -100");
+
+    ticker.set_current_value(150);
+    check_condition(
+        ticker.current_value() == 100,
+        "set_current_value::clamps at end_value",
+        "expected 100"
+    );
+
+
+    ticker.set_current_value(-50);
+    check_condition(
+        ticker.current_value() == 0,
+        "set_current_value::clamps at start_value",
+        "expected 0"
+    );
 }
 
-/// Verifies that set_start_value() correctly updates start_value for both positive
-/// and negative inputs.
-///
-/// Note that set_start_value() does not automatically update current_value or digit —
-/// those only change when methods that explicitly operate on them are called.
+/// Verifies that set_start_value() updates start_value and clamps it to V::MIN/V::MAX.
 fn test_set_start_value() {
-    let mut t = Ticker::new(0);
-    t.set_start_value(33);
-    check("set_start_value::value updated", t.get_start_value() == 33, "expected 33");
 
-    t.set_start_value(-33);
-    check("set_start_value::negative value", t.get_start_value() == -33, "expected -33");
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+
+    ticker.set_start_value(33);
+    check_condition(
+        ticker.start_value() == 33,
+        "set_start_value::value updated",
+        "expected 33"
+    );
+
+
+    ticker.set_start_value(-33);
+    check_condition(
+        ticker.start_value() == -33,
+        "set_start_value::negative value",
+        "expected -33"
+    );
 }
 
-/// Verifies that add_to_start() correctly modifies start_value and clamps at both boundaries.
-///
-/// Confirms positive addition, negative addition (subtraction), and that results
-/// exceeding TICKER_MAX_VALUE (100) or falling below TICKER_MIN_VALUE (-100) are
-/// clamped rather than wrapping or panicking.
-fn test_add_to_start() {
-    let mut t = Ticker::new(50);
-    t.add_to_start(10);
-    check("add_to_start::positive addition", t.get_start_value() == 60, "expected 60");
+/// Verifies that set_end_value() updates end_value and clamps it to V::MIN/V::MAX.
+fn test_set_end_value() {
 
-    t.add_to_start(-20);
-    check("add_to_start::negative addition (subtraction)", t.get_start_value() == 40, "expected 40");
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
 
-    // Clamp at max (100)
-    t.add_to_start(100);
-    check("add_to_start::clamps at TICKER_MAX_VALUE (100)", t.get_start_value() == 100, "expected 100");
+    ticker.set_end_value(200);
+    check_condition(
+        ticker.end_value() == 200,
+        "set_end_value::value updated",
+        "expected 200"
+    );
+}
+// ############################################################################################## //
 
-    // Clamp at min (-100)
-    t.add_to_start(-127);
-    t.add_to_start(-127);
-    check("add_to_start::clamps at TICKER_MIN_VALUE (-100)", t.get_start_value() == -100, "expected -100");
+
+
+// ######################################## ADD TESTS ############################################ //
+/// Verifies that add_to_start_value() modifies start_value and clamps at V::MIN/V::MAX.
+fn test_add_to_start_value() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        50,
+        50,
+        1000,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+
+    ticker.add_to_start_value(10);
+    check_condition(
+        ticker.start_value() == 60,
+        "add_to_start_value::positive addition",
+        "expected 60"
+    );
+
+
+    ticker.add_to_start_value(-20);
+    check_condition(
+        ticker.start_value() == 40,
+        "add_to_start_value::negative addition (subtraction)",
+        "expected 40"
+    );
 }
 
-/// Verifies that add_to_current() correctly modifies current_value and clamps at both boundaries.
-///
-/// Mirrors the structure of test_add_to_start: positive addition, negative addition,
-/// and clamping behaviour at TICKER_MAX_VALUE and TICKER_MIN_VALUE.
-fn test_add_to_current() {
-    let mut t = Ticker::new(0);
-    t.add_to_current(25);
-    check("add_to_current::positive addition", t.get_current_value() == 25, "expected 25");
+/// Verifies that add_to_current_value() modifies current_value and clamps within
+/// the start_value/end_value range.
+fn test_add_to_current_value() {
 
-    t.add_to_current(-10);
-    check("add_to_current::negative addition", t.get_current_value() == 15, "expected 15");
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
 
-    // Clamp at max
-    t.add_to_current(100);
-    check("add_to_current::clamps at max (100)", t.get_current_value() == 100, "expected 100");
+    ticker.add_to_current_value(25);
+    check_condition(
+        ticker.current_value() == 25,
+        "add_to_current_value::positive addition",
+        "expected 25"
+    );
 
-    // Clamp at min
-    t.add_to_current(-127);
-    t.add_to_current(-127);
-    check("add_to_current::clamps at min (-100)", t.get_current_value() == -100, "expected -100");
+
+    ticker.add_to_current_value(-10);
+    check_condition(
+        ticker.current_value() == 15,
+        "add_to_current_value::negative addition",
+        "expected 15"
+    );
+
+
+    ticker.add_to_current_value(1000);
+    check_condition(
+        ticker.current_value() == 100,
+        "add_to_current_value::clamps at end_value",
+        "expected 100"
+    );
 }
 
-/// Verifies that reset() restores current_value to start_value and updates digit accordingly.
-///
-/// Tests both a positive start_value (20) and a negative start_value (-37) to confirm
-/// that digit correctly reflects the ones-place of the absolute value of start_value
-/// after the reset.  Note that reset() does not affect state.
+/// Verifies that add_to_end_value() modifies end_value and clamps at V::MIN/V::MAX.
+fn test_add_to_end_value() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+
+    ticker.add_to_end_value(50);
+    check_condition(
+        ticker.end_value() == 150,
+        "add_to_end_value::positive addition",
+        "expected 150"
+    );
+}
+
+/// Verifies that add_to_interval() modifies interval and clamps it to a positive value,
+/// never allowing it to reach zero or go negative.
+fn test_add_to_interval() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+
+    ticker.add_to_interval(0.5);
+    check_condition(
+        ticker.interval() == 1.5,
+        "add_to_interval::positive addition",
+        "expected 1.5"
+    );
+
+
+    ticker.add_to_interval(-100.0);
+    check_condition(
+        ticker.interval() > 0.0,
+        "add_to_interval::clamps above zero rather than going negative",
+        "expected interval > 0.0"
+    );
+}
+// ############################################################################################## //
+
+
+
+// ################################### RESET / BOUNDARY TESTS ##################################### //
+/// Verifies that reset() restores current_value to start_value, for both a positive
+/// and a negative start_value.
 fn test_reset() {
-    let mut t = Ticker::new(20);
-    t.set_current_value(80);
-    t.reset();
-    check("reset::current_value returns to start_value", t.get_current_value() == 20, "expected 20");
-    check("reset::digit reflects start_value ones-place",  t.get_digit()         == 0,  "expected 0");
 
-    // Reset on negative start
-    let mut t2 = Ticker::new(-37);
-    t2.set_current_value(0);
-    t2.reset();
-    check("reset::negative start restored", t2.get_current_value() == -37, "expected -37");
-    check("reset::digit of -37 is 7",       t2.get_digit()         == 7,   "expected 7");
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        20,
+        20,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    ticker.set_current_value(80);
+    ticker.reset();
+    check_condition(
+        ticker.current_value() == 20,
+        "reset::current_value returns to start_value",
+        "expected 20"
+    );
+
+
+    let mut ticker_negative: Ticker<i32, f32> = Ticker::new(
+        -37,
+        -37,
+        50,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    ticker_negative.set_current_value(0);
+    ticker_negative.reset();
+    check_condition(
+        ticker_negative.current_value() == -37,
+        "reset::negative start_value restored",
+        "expected -37"
+    );
 }
 
-/// Verifies that set_to_zero() sets current_value and digit to 0 without touching start_value.
-///
-/// set_to_zero() is the method tick() calls internally when the loop point is reached,
-/// so confirming that only current_value and digit are affected — and start_value is
-/// left alone — is important for understanding how looping behavior works.
-fn test_set_to_zero() {
-    let mut t = Ticker::new(99);
-    t.set_to_zero();
-    check("set_to_zero::current_value is 0", t.get_current_value() == 0, "expected 0");
-    check("set_to_zero::digit is 0",         t.get_digit()         == 0, "expected 0");
-    // start_value should be unaffected
-    check("set_to_zero::start_value unchanged", t.get_start_value() == 99, "expected 99");
-}
-
-/// Verifies that set_current_to_min() sets current_value to TICKER_MIN_VALUE (-100) and
-/// updates digit to reflect the ones-place of its absolute value (0, since 100 % 10 = 0).
+/// Verifies that setting current_value to the start/end range minimum behaves as expected,
+/// replacing the old set_current_to_min() helper with set_current_value(start_value).
 fn test_set_current_to_min() {
-    let mut t = Ticker::new(50);
-    t.set_current_to_min();
-    check("set_current_to_min::current_value is -100", t.get_current_value() == -100, "expected -100");
-    check("set_current_to_min::digit is 0 (100 % 10)", t.get_digit()         == 0,    "expected 0");
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        -100,
+        50,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    ticker.set_current_value(ticker.start_value());
+    check_condition(
+        ticker.current_value() == -100,
+        "set_current_to_min::current_value matches start_value",
+        "expected -100"
+    );
 }
 
-/// Verifies that set_current_to_max() sets current_value to TICKER_MAX_VALUE (100) and
-/// updates digit to reflect the ones-place of its absolute value (0, since 100 % 10 = 0).
+/// Verifies that setting current_value to the start/end range maximum behaves as expected,
+/// replacing the old set_current_to_max() helper with set_current_value(end_value).
 fn test_set_current_to_max() {
-    let mut t = Ticker::new(0);
-    t.set_current_to_max();
-    check("set_current_to_max::current_value is 100", t.get_current_value() == 100, "expected 100");
-    check("set_current_to_max::digit is 0 (100 % 10)", t.get_digit()        == 0,   "expected 0");
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    ticker.set_current_value(ticker.end_value());
+    check_condition(
+        ticker.current_value() == 100,
+        "set_current_to_max::current_value matches end_value",
+        "expected 100"
+    );
+}
+// ############################################################################################## //
+
+
+
+// ##################################### COMPARISON TESTS ######################################### //
+/// Verifies the three equality-comparison methods: is_current_equal_to_start(),
+/// is_current_equal_to_end(), and is_start_equal_to_end().
+fn test_equal_methods() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        50,
+        50,
+        50,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker.is_current_equal_to_start(),
+        "is_current_equal_to_start::true when equal",
+        "expected true"
+    );
+
+
+    check_condition(
+        ticker.is_current_equal_to_end(),
+        "is_current_equal_to_end::true when equal",
+        "expected true"
+    );
+
+
+    check_condition(
+        ticker.is_start_equal_to_end(),
+        "is_start_equal_to_end::true when equal",
+        "expected true"
+    );
+
+
+    ticker.set_current_value(10);
+    let ticker_below: Ticker<i32, f32> = Ticker::new(
+        0,
+        10,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        !ticker_below.is_current_equal_to_start(),
+        "is_current_equal_to_start::false when below start",
+        "expected false"
+    );
+
+
+    check_condition(
+        !ticker_below.is_current_equal_to_end(),
+        "is_current_equal_to_end::false when below end",
+        "expected false"
+    );
 }
 
-/// Verifies the three comparison methods against all three possible relationships
-/// between current_value and start_value.
-///
-/// Each of current_is_equal_to_start(), current_is_below_start(), and
-/// current_is_above_start() is checked for correctness in the equal, below, and above
-/// cases, ensuring that all three methods agree with one another and never return
-/// conflicting results for the same state.
-fn test_comparisons() {
-    let mut t = Ticker::new(50);
+/// Verifies that difference_from_start(), difference_from_end(), and
+/// difference_from_start_to_end() all return correct, always-positive distances.
+fn test_difference_methods() {
 
-    // current == start (both are 50)
-    check("current_is_equal_to_start::true when equal",       t.current_is_equal_to_start(), "expected true");
-    check("current_is_below_start::false when equal",         !t.current_is_below_start(),   "expected false");
-    check("current_is_above_start::false when equal",         !t.current_is_above_start(),   "expected false");
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        -100,
+        50,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker.difference_from_start() == 150,
+        "difference_from_start::correct distance",
+        "expected 150"
+    );
 
-    // current below start
-    t.set_current_value(10);
-    check("current_is_below_start::true when below",          t.current_is_below_start(),    "expected true");
-    check("current_is_above_start::false when below",         !t.current_is_above_start(),   "expected false");
-    check("current_is_equal_to_start::false when below",      !t.current_is_equal_to_start(),"expected false");
 
-    // current above start
-    t.set_current_value(75);
-    check("current_is_above_start::true when above",          t.current_is_above_start(),    "expected true");
-    check("current_is_below_start::false when above",         !t.current_is_below_start(),   "expected false");
-    check("current_is_equal_to_start::false when above",      !t.current_is_equal_to_start(),"expected false");
+    check_condition(
+        ticker.difference_from_end() == 50,
+        "difference_from_end::correct distance",
+        "expected 50"
+    );
+
+
+    check_condition(
+        ticker.difference_from_start_to_end() == 200,
+        "difference_from_start_to_end::correct distance",
+        "expected 200"
+    );
+
+
+    let ticker_equal: Ticker<i32, f32> = Ticker::new(
+        50,
+        50,
+        50,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_equal.difference_from_start() == 0,
+        "difference_from_start::zero when equal",
+        "expected 0"
+    );
+}
+// ############################################################################################## //
+
+
+
+
+// ####################################### DIGIT TESTS ############################################ //
+/// Verifies digit_1(), digit_2(), and digit_3() correctly extract the ones, tens,
+/// and hundreds digits of current_value, regardless of sign.
+fn test_digit_methods() {
+
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        123,
+        1000,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker.digit_1() == 3,
+        "digit_1::ones place of 123",
+        "expected 3"
+    );
+
+
+    check_condition(
+        ticker.digit_2() == 2,
+        "digit_2::tens place of 123",
+        "expected 2"
+    );
+
+
+    check_condition(
+        ticker.digit_3() == 1,
+        "digit_3::hundreds place of 123",
+        "expected 1"
+    );
+
+
+    let ticker_negative: Ticker<i32, f32> = Ticker::new(
+        -1000,
+        -45,
+        0,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_negative.digit_1() == 5,
+        "digit_1::ones place of -45 uses absolute value",
+        "expected 5"
+    );
+
+
+    check_condition(
+        ticker_negative.digit_2() == 4,
+        "digit_2::tens place of -45 uses absolute value",
+        "expected 4"
+    );
+
+
+    let ticker_small: Ticker<i32, f32> = Ticker::new(
+        0,
+        7,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_small.digit_2() == 0,
+        "digit_2::returns 0 when tens place doesn't exist",
+        "expected 0"
+    );
+
+
+    check_condition(
+        ticker_small.digit_3() == 0,
+        "digit_3::returns 0 when hundreds place doesn't exist",
+        "expected 0"
+    );
 }
 
-/// Verifies that get_distance_from_start() returns the correct signed difference
-/// between current_value and start_value (CURRENT - START).
-///
-/// Tests zero distance (equal values), positive distance (current above start),
-/// negative distance (current below start), and a boundary case where the distance
-/// is 200 — the maximum possible spread — to confirm the i16 return type handles it.
-fn test_get_distance_from_start() {
-    let mut t = Ticker::new(50);
-    check("get_distance_from_start::zero when equal", t.get_distance_from_start() == 0, "expected 0");
+/// Verifies digit_2_with_dda() and digit_3_with_dda() correctly distinguish between
+/// a digit that is absent (-1) and a digit that is present but happens to be 0.
+fn test_digit_with_dda_methods() {
 
-    t.set_current_value(80);
-    check("get_distance_from_start::positive when above start", t.get_distance_from_start() == 30, "expected 30");
+    let ticker_absent: Ticker<i32, f32> = Ticker::new(
+        0,
+        6,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_absent.digit_2_with_dda() == -1,
+        "digit_2_with_dda::-1 when tens place absent",
+        "expected -1"
+    );
 
-    t.set_current_value(20);
-    check("get_distance_from_start::negative when below start", t.get_distance_from_start() == -30, "expected -30");
 
-    // Boundary: start=-100, current=100; distance=200 (fits in i16)
-    let mut t2 = Ticker::new(-100);
-    t2.set_current_value(100);
-    check("get_distance_from_start::large positive distance", t2.get_distance_from_start() == 200, "expected 200");
+    let ticker_present: Ticker<i32, f32> = Ticker::new(
+        0,
+        63,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_present.digit_2_with_dda() == 6,
+        "digit_2_with_dda::6 when tens place present",
+        "expected 6"
+    );
+
+
+    let ticker_zero_digit: Ticker<i32, f32> = Ticker::new(
+        0,
+        1003,
+        2000,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_zero_digit.digit_3_with_dda() == 0,
+        "digit_3_with_dda::0 when hundreds place present but is zero",
+        "expected 0"
+    );
 }
+// ############################################################################################## //
 
-/// Verifies that get_countdown_value() returns the correct number of seconds remaining
-/// in a countdown, and returns 0 once the countdown is complete or current_value is
-/// at or below zero.
-///
-/// Uses new_with_countdown(10) as the baseline (start_value = 91).  Tests the full
-/// countdown remaining (10), a partial countdown (5 seconds left at current = 96),
-/// completion at current = 0, and the edge case of a negative current_value, both of
-/// which should return 0.
-fn test_get_countdown_value() {
-    // Made with new_with_countdown(10) => start=91, current=91
-    let t = Ticker::new_with_countdown(10);
-    check("get_countdown_value::full countdown remaining is 10", t.get_countdown_value() == 10, "expected 10");
 
-    // Simulate partway through: current = 96 => 101-96 = 5 remaining
-    let mut t2 = Ticker::new_with_countdown(10);
-    t2.set_current_value(96);
-    check("get_countdown_value::5 seconds remaining", t2.get_countdown_value() == 5, "expected 5");
 
-    // Countdown complete: current >= LOOP_POINT is impossible, but current=0 or negative => returns 0
-    let mut t3 = Ticker::new_with_countdown(10);
-    t3.set_current_value(0);
-    check("get_countdown_value::returns 0 when current_value is 0", t3.get_countdown_value() == 0, "expected 0");
-
-    let mut t4 = Ticker::new_with_countdown(10);
-    t4.set_current_value(-5);
-    check("get_countdown_value::returns 0 when current_value is negative", t4.get_countdown_value() == 0, "expected 0");
-}
-
-/// Verifies that pause() and unpause() correctly update both the internal Bevy timer's
-/// paused status and the Ticker's TickerStates field in lockstep.
-///
-/// Both fields must agree: a paused Ticker should have a paused timer AND a Paused
-/// state, and an unpaused Ticker should have an unpaused timer AND a Ticking state.
-/// Divergence between the two would indicate a bug in either pause() or unpause().
+// ###################################### STATE TOGGLE TESTS ###################################### //
+/// Verifies that pause() and unpause() correctly update is_paused().
 fn test_pause_unpause() {
-    let mut t = Ticker::default();
 
-    t.pause();
-    check("pause::timer is paused after pause()",       t.get_timer().is_paused(),                    "expected paused == true");
-    check("pause::state is Paused after pause()",       t.get_state() == &TickerStates::Paused,    "expected Paused");
+    let mut ticker: Ticker<i32, f32> = Ticker::default();
 
-    t.unpause();
-    check("unpause::timer not paused after unpause()",  !t.get_timer().is_paused(),                   "expected paused == false");
-    check("unpause::state is Ticking after unpause()",  t.get_state() == &TickerStates::Ticking,   "expected Ticking");
+    ticker.pause();
+    check_condition(
+        ticker.is_paused(),
+        "pause::is_paused true after pause()",
+        "expected true"
+    );
+
+
+    ticker.unpause();
+    check_condition(
+        !ticker.is_paused(),
+        "unpause::is_paused false after unpause()",
+        "expected false"
+    );
 }
 
-/// Verifies the core tick() behaviour: value advancement, digit tracking, loop-back
-/// at LOOP_POINT, and that a paused Ticker does not advance.
-///
-/// Real elapsed time is not available in a Startup system, so tick() is driven directly
-/// with std::time::Duration::from_secs(1) to guarantee deterministic results.  The loop
-/// case (current = 100 ticking to LOOP_POINT = 101) confirms that zero_out() is called
-/// correctly and that state is preserved through the tick in the paused case.
-fn test_tick_loop() {
-    // We can't rely on real elapsed time in a Startup system, so we test
-    // tick() by feeding a duration that is guaranteed to fire the timer.
-    // Default timer = 1.0s repeating; passing 1 second of duration fires it once.
-    let one_second = std::time::Duration::from_secs(1);
+/// Verifies that start_looping() and stop_looping() correctly update is_looping().
+fn test_looping_toggle() {
 
-    let mut t = Ticker::new(0);
-    t.tick(one_second);
-    check("tick::increments current_value by 1 after one second", t.get_current_value() == 1, "expected 1");
-    check("tick::digit updated after tick",                       t.get_digit()         == 1, "expected 1");
+    let mut ticker: Ticker<i32, f32> = Ticker::default();
 
-    // Digit rollover: 9 -> 10, digit should become 0
-    let mut t2 = Ticker::new(9);
-    t2.tick(one_second);
-    check("tick::digit rolls over 9->0 at tens boundary", t2.get_digit() == 0, "expected 0");
+    ticker.stop_looping();
+    check_condition(
+        !ticker.is_looping(),
+        "stop_looping::is_looping false",
+        "expected false"
+    );
 
-    // Loop: current = 100, one more tick should hit LOOP_POINT (101) and zero out
-    let mut t3 = Ticker::new(100);
-    t3.tick(one_second);
-    check("tick::loops back to 0 at LOOP_POINT", t3.get_current_value() == 0, "expected 0");
-    check("tick::digit is 0 after loop",         t3.get_digit()         == 0, "expected 0");
 
-    // Paused ticker should NOT advance
-    let mut t4 = Ticker::new(5);
-    t4.pause();
-    t4.tick(one_second);
-    check("tick::paused ticker does not advance",       t4.get_current_value() == 5,                  "expected 5");
-    check("tick::state remains Paused after tick",      t4.get_state() == &TickerStates::Paused,      "expected Paused");
+    ticker.start_looping();
+    check_condition(
+        ticker.is_looping(),
+        "start_looping::is_looping true",
+        "expected true"
+    );
 }
 
-/// Dedicated state transition tests enabled by TickerStates deriving PartialEq.
-///
-/// Verifies every path that changes state: pause(), unpause(), double-toggling
-/// (idempotency), and that state remains unaffected by set_current_value() and
-/// reset() in both the Ticking and Paused conditions.  This is the authoritative
-/// test for TickerStates behaviour; test_pause_unpause covers the timer/state
-/// agreement specifically, while this test covers state in isolation and breadth.
-fn test_ticker_states() {
+/// Verifies that tick_up() and tick_down() correctly update is_ticking_up().
+fn test_tick_direction_toggle() {
 
-    // Fresh ticker is always Ticking
-    let mut t = Ticker::new(0);
-    check("ticker_states::initial state is Ticking",        t.get_state() == &TickerStates::Ticking,  "expected Ticking");
+    let mut ticker: Ticker<i32, f32> = Ticker::default();
 
-    // Single pause
-    t.pause();
-    check("ticker_states::Paused after pause()",            t.get_state() == &TickerStates::Paused,   "expected Paused");
+    ticker.tick_down();
+    check_condition(
+        !ticker.is_ticking_up(),
+        "tick_down::is_ticking_up false",
+        "expected false"
+    );
 
-    // Single unpause
-    t.unpause();
-    check("ticker_states::Ticking after unpause()",         t.get_state() == &TickerStates::Ticking,  "expected Ticking");
 
-    // Repeated toggles stay consistent
-    t.pause();
-    t.pause();
-    check("ticker_states::double-pause stays Paused",       t.get_state() == &TickerStates::Paused,   "expected Paused");
-
-    t.unpause();
-    t.unpause();
-    check("ticker_states::double-unpause stays Ticking",    t.get_state() == &TickerStates::Ticking,  "expected Ticking");
-
-    // State is independent of current_value changes
-    t.set_current_value(50);
-    check("ticker_states::state unaffected by set_current_value", t.get_state() == &TickerStates::Ticking, "expected Ticking");
-
-    t.pause();
-    t.set_current_value(75);
-    check("ticker_states::state stays Paused through set_current_value", t.get_state() == &TickerStates::Paused, "expected Paused");
-
-    // State is independent of reset()
-    t.unpause();
-    t.reset();
-    check("ticker_states::reset does not alter state",      t.get_state() == &TickerStates::Ticking,  "expected Ticking");
-
-    t.pause();
-    t.reset();
-    check("ticker_states::reset while Paused stays Paused", t.get_state() == &TickerStates::Paused,   "expected Paused");
+    ticker.tick_up();
+    check_condition(
+        ticker.is_ticking_up(),
+        "tick_up::is_ticking_up true",
+        "expected true"
+    );
 }
 
-/// Confirms new() panics on out-of-range values using std::panic::catch_unwind.
+/// Verifies that start_handling_frame_spikes() and stop_handling_frame_spikes()
+/// correctly update is_handling_frame_spikes().
+fn test_frame_spike_toggle() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::default();
+
+    ticker.stop_handling_frame_spikes();
+    check_condition(
+        !ticker.is_handling_frame_spikes(),
+        "stop_handling_frame_spikes::false",
+        "expected false"
+    );
+
+
+    ticker.start_handling_frame_spikes();
+    check_condition(
+        ticker.is_handling_frame_spikes(),
+        "start_handling_frame_spikes::true",
+        "expected true"
+    );
+}
+// ############################################################################################## //
+
+
+
+
+
+// #################################### PERCENTAGE TESTS ########################################## //
+/// Verifies that percentage_from_start() returns the correct fraction of current_value's
+/// distance from start_value, and returns -1.0 when start_value equals end_value.
+fn test_percentage_from_start() {
+
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        40,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        (ticker.percentage_from_start() - 0.4).abs() < 0.0001,
+        "percentage_from_start::0.4 for 40 in 0..100",
+        "expected ~0.4"
+    );
+
+
+    let ticker_equal: Ticker<i32, f32> = Ticker::new(
+        100,
+        100,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_equal.percentage_from_start() == -1.0,
+        "percentage_from_start::-1.0 when start equals end",
+        "expected -1.0"
+    );
+}
+
+/// Verifies that percentage_from_end() returns the correct fraction of current_value's
+/// distance from end_value, and returns -1.0 when start_value equals end_value.
+fn test_percentage_from_end() {
+
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        60,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        (ticker.percentage_from_end() - 0.4).abs() < 0.0001,
+        "percentage_from_end::0.4 for 60 in 0..100",
+        "expected ~0.4"
+    );
+
+
+    let ticker_equal: Ticker<i32, f32> = Ticker::new(
+        100,
+        100,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    check_condition(
+        ticker_equal.percentage_from_end() == -1.0,
+        "percentage_from_end::-1.0 when start equals end",
+        "expected -1.0"
+    );
+}
+// ############################################################################################## //
+
+
+
+// ######################################## TICK TESTS ############################################ //
+/// Verifies that tick() increments current_value when ticking up and enough delta
+/// time has accrued to cross the interval threshold.
+fn test_tick_counts_up() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    ticker.tick(1.0);
+    check_condition(
+        ticker.current_value() == 1,
+        "tick::increments current_value by 1 after one full interval",
+        "expected 1"
+    );
+}
+
+/// Verifies that tick() decrements current_value when ticking down and enough delta
+/// time has accrued to cross the interval threshold.
+fn test_tick_counts_down() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        50,
+        100,
+        1.0,
+        false,
+        true,
+        false,
+        true
+    );
+    ticker.tick(1.0);
+    check_condition(
+        ticker.current_value() == 49,
+        "tick::decrements current_value by 1 when ticking down",
+        "expected 49"
+    );
+}
+
+/// Verifies that a looping Ticker resets current_value to start_value upon reaching
+/// either boundary, rather than exceeding the start_value/end_value range.
+fn test_tick_loops_at_boundary() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        99,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    ticker.tick(1.0);
+    check_condition(
+        ticker.current_value() == 0,
+        "tick::loops back to start_value at end_value boundary",
+        "expected 0"
+    );
+}
+
+/// Verifies that a paused Ticker does not advance current_value regardless of delta passed in.
+fn test_tick_paused_does_not_advance() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        5,
+        100,
+        1.0,
+        true,
+        true,
+        true,
+        true
+    );
+    ticker.tick(1.0);
+    check_condition(
+        ticker.current_value() == 5,
+        "tick::paused ticker does not advance",
+        "expected 5"
+    );
+}
+
+/// Verifies that a Ticker with frame spike handling enabled correctly fires multiple
+/// ticks at once when a single large delta is passed in, rather than firing only once.
+fn test_tick_frame_spike_handling() {
+
+    let mut ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    ticker.tick(3.5);
+    check_condition(
+        ticker.current_value() == 3,
+        "tick::frame spike handling fires multiple ticks for a large delta",
+        "expected 3"
+    );
+}
+// ############################################################################################## //
+
+
+
+// ###################################### PANIC GUARD TESTS ####################################### //
+/// Confirms new() panics on a current_value outside the start_value/end_value range,
+/// using std::panic::catch_unwind to verify the panic without crashing the test suite.
 fn test_new_panic_guard() {
-    println!("{}[INFO] The following 2 panics are intentional and expected.{}", TestColors::INFO, TestColors::RESET);
-    let over  = std::panic::catch_unwind(|| Ticker::new(101));
-    let under = std::panic::catch_unwind(|| Ticker::new(-101));
-    check("new::panics on value > 100",  over.is_err(),  "expected panic");
-    check("new::panics on value < -100", under.is_err(), "expected panic");
+
+    println!("{}[INFO]{} The following panic is intentional and expected.", TestColors::INFO, TestColors::DEFAULT);
+    let result = std::panic::catch_unwind(|| {
+        let _ticker: Ticker<i32, f32> = Ticker::new(
+            0,
+            150,
+            100,
+            1.0,
+            false,
+            true,
+            true,
+            true
+        );
+    });
+    check_condition(
+        result.is_err(),
+        "new::panics when current_value is outside start_value/end_value range",
+        "expected panic"
+    );
+}
+// ############################################################################################## //
+
+
+
+// ###################################### UPDATE-SET TESTS ######################################## //
+//
+// Unlike the Startup tests above, these tests spawn a real Ticker<i32, f32> entity into
+// the ECS so that ticker_ticking (registered by TimeStructures) actually queries and
+// advances it every frame using real elapsed time.  This is the only way to verify that
+// ticker_ticking itself is wired correctly — Startup tests call .tick() directly and
+// never touch the ECS, so they can't catch a broken system registration or query.
+//
+// These tests run every frame indefinitely, re-checking the same invariants each time.
+// This will produce a continuous stream of [PASS]/[FAIL] messages while the app runs —
+// that's expected and is the point: a single [FAIL] appearing at any point means
+// ticker_ticking violated an invariant on that frame.
+
+/// Spawns a single looping Ticker<i32, f32> entity for the per-frame tests to observe.
+fn setup_update_test_ticker(mut commands: Commands) {
+
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        1_000_000,
+        1.0,
+        false,
+        true,
+        true,
+        true
+    );
+    commands.spawn((ticker, ForwardTestMarker));
+}
+/// Verifies that the spawned Ticker's current_value always stays within its
+/// start_value/end_value range, confirming ticker_ticking's clamping logic holds
+/// up under real, continuously-accumulating frame deltas rather than the single
+/// hand-fed deltas used in the Startup tests.
+fn test_update_ticker_stays_within_range(
+    tickers: Query<&Ticker<i32, f32>>,
+) {
+    for ticker in &tickers {
+        let current = ticker.current_value();
+        let start = ticker.start_value();
+        let end = ticker.end_value();
+
+        let min = start.min(end);
+        let max = start.max(end);
+
+        check_condition(
+            current >= min && current <= max,
+            "update::ticker_ticking keeps current_value within start_value/end_value range",
+            "expected current_value to remain within range"
+        );
+    }
+}
+// ############################################################################################## //
+
+
+// ################################## ADDITIONAL UPDATE-SET TESTS ################################ //
+//
+// These extend the per-frame test coverage beyond the original check.
+// Each spawns its own dedicated entity so the tests don't interfere with one another or with the
+// original test_update_ticker_* systems.
+
+/// Marker component distinguishing each Update-set test's dedicated ticker entity,
+/// since multiple Ticker<i32, f32> entities now coexist in the world and each test
+/// system needs to query only its own.
+#[derive(Component)]
+struct ForwardTestMarker;
+
+#[derive(Component)]
+struct PausedTestMarker;
+
+#[derive(Component)]
+struct LoopingTestMarker;
+
+#[derive(Component)]
+struct CountdownTestMarker;
+
+#[derive(Component)]
+struct AccrualTestMarker;
+
+/// Verifies that a spawned, unpaused, ticking-up Ticker's current_value never decreases
+/// from one frame to the next, confirming ticker_ticking is advancing it forward over time.
+///
+/// Tracks the previous frame's value in a Local<Option<i32>> since this needs to compare
+/// across frames rather than within a single one.
+fn test_update_ticker_advances_forward(
+    tickers: Query<&Ticker<i32, f32>, With<ForwardTestMarker>>,
+    mut previous_value: Local<Option<i32>>,
+) {
+    for ticker in &tickers {
+        let current = ticker.current_value();
+
+        if let Some(previous) = *previous_value {
+            check_condition(
+                current >= previous,
+                "update::ticker_ticking never decreases current_value while ticking up",
+                "expected current_value to be >= previous frame's value"
+            );
+        }
+
+        *previous_value = Some(current);
+    }
 }
 
-/// Confirms new_with_countdown() panics on out-of-range durations.
-fn test_countdown_panic_guard() {
-    println!("{}[INFO] The following 2 panics are intentional and expected.{}", TestColors::INFO, TestColors::RESET);
-    let over  = std::panic::catch_unwind(|| Ticker::new_with_countdown(101));
-    let under = std::panic::catch_unwind(|| Ticker::new_with_countdown(0));
-    check("new_with_countdown::panics on duration > 100", over.is_err(),  "expected panic");
-    check("new_with_countdown::panics on duration < 1",   under.is_err(), "expected panic");
+
+/// Spawns a paused Ticker entity to confirm ticker_ticking leaves paused tickers untouched
+/// across real frames, not just within a single .tick() call as the Startup test checks.
+fn setup_update_test_paused_ticker(mut commands: Commands) {
+
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        42,
+        100,
+        1.0,
+        true,
+        true,
+        true,
+        true
+    );
+    commands.spawn((ticker, PausedTestMarker));
 }
+
+/// Spawns a small-range looping Ticker entity so looping resets are observable
+/// frequently in real time rather than requiring a very long-running app.
+fn setup_update_test_looping_ticker(mut commands: Commands) {
+
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        3,
+        0.1,
+        false,
+        true,
+        true,
+        true
+    );
+    commands.spawn((ticker, LoopingTestMarker));
+}
+
+/// Spawns a ticking-down Ticker entity to confirm ticker_ticking respects tick
+/// direction over real frames, not just a single hand-fed .tick() call.
+fn setup_update_test_countdown_ticker(mut commands: Commands) {
+
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        1_000_000,
+        1_000_000,
+        1.0,
+        false,
+        false,
+        false,
+        true
+    );
+    commands.spawn((ticker, CountdownTestMarker));
+}
+
+/// Spawns a Ticker with a very long interval to confirm accrued_delta accumulates
+/// correctly across many frames without firing prematurely.
+fn setup_update_test_accrual_ticker(mut commands: Commands) {
+
+    let ticker: Ticker<i32, f32> = Ticker::new(
+        0,
+        0,
+        100,
+        9999.0,
+        false,
+        true,
+        true,
+        true
+    );
+    commands.spawn((ticker, AccrualTestMarker));
+}
+
+/// Verifies that a paused Ticker's current_value never changes across any frame,
+/// confirming ticker_ticking's pause check holds under real, repeated frame advancement.
+fn test_update_paused_ticker_never_advances(
+    tickers: Query<&Ticker<i32, f32>, With<PausedTestMarker>>,
+) {
+    for ticker in &tickers {
+        check_condition(
+            ticker.current_value() == 42,
+            "update::paused ticker never advances across real frames",
+            "expected current_value to remain 42"
+        );
+    }
+}
+
+/// Verifies that a looping Ticker's current_value never exceeds end_value, confirming
+/// that repeated real-frame ticks correctly trigger the loop-back-to-start_value reset
+/// rather than current_value creeping past the boundary on some frame.
+fn test_update_looping_ticker_never_exceeds_end(
+    tickers: Query<&Ticker<i32, f32>, With<LoopingTestMarker>>,
+) {
+    for ticker in &tickers {
+        check_condition(
+            ticker.current_value() <= ticker.end_value(),
+            "update::looping ticker never exceeds end_value across real frames",
+            "expected current_value <= end_value"
+        );
+
+        check_condition(
+            ticker.current_value() >= ticker.start_value(),
+            "update::looping ticker never drops below start_value across real frames",
+            "expected current_value >= start_value"
+        );
+    }
+}
+
+/// Verifies that a ticking-down Ticker's current_value never increases from one frame
+/// to the next, mirroring test_update_ticker_advances_forward but for the opposite
+/// tick direction.
+fn test_update_countdown_ticker_never_increases(
+    tickers: Query<&Ticker<i32, f32>, With<CountdownTestMarker>>,
+    mut previous_value: Local<Option<i32>>,
+) {
+    for ticker in &tickers {
+        let current = ticker.current_value();
+
+        if let Some(previous) = *previous_value {
+            check_condition(
+                current <= previous,
+                "update::ticking-down ticker never increases current_value across real frames",
+                "expected current_value to be <= previous frame's value"
+            );
+        }
+
+        *previous_value = Some(current);
+    }
+}
+
+/// Verifies that a Ticker with an extremely long interval has not yet advanced its
+/// current_value away from its starting point, confirming accrued_delta is being
+/// tracked correctly rather than firing ticks prematurely due to a unit or
+/// precision mistake somewhere in the accumulation logic.
+fn test_update_accrual_ticker_has_not_fired_early(
+    tickers: Query<&Ticker<i32, f32>, With<AccrualTestMarker>>,
+) {
+    for ticker in &tickers {
+        check_condition(
+            ticker.current_value() == 0,
+            "update::ticker with a very long interval has not fired a tick yet",
+            "expected current_value to remain 0 until the interval elapses"
+        );
+    }
+}
+
+/// Prints the dedicated forward-test Ticker's current_value every frame.
+/// Purely observational — no assertions, just visibility into what the value
+/// is actually doing frame to frame while debugging.
+fn test_update_print_current_value(
+    tickers: Query<&Ticker<i32, f32>, With<ForwardTestMarker>>,
+) {
+    for ticker in &tickers {
+        println!("current_value: {}", ticker.current_value());
+    }
+}
+
+// ############################################################################################## //
