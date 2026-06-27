@@ -1,3 +1,4 @@
+
 // Imports
 use bevy::prelude::*;
 use std::cmp::PartialEq;
@@ -5,12 +6,9 @@ use std::fmt::Display;
 use std::ops::{Add, AddAssign, Div, Rem, RemAssign, Sub, SubAssign};
 use mirth_engine_testing_tools::{check_if_value_is_within_range};
 
-// ####################################### VALUE TRAIT ########################################## //
-/// Used to apply a generic to the start_value, current_value, and end_value within the Ticker type.
+/// Used to apply a generic to the `start_value`, `current_value`, and `end_value` within the ticker type.
 ///
-/// Supports i8, i16, i32 for start_value, current_value, and end_value within Ticker.  Memory size
-/// for the Ticker values is adjustable due to this trait.  9 times out of 10 you'll likely just need
-/// i8 tickers.
+/// Supports i8, i16, i32 for `start_value`, `current_value`, and `end_value` within Ticker.
 ///
 /// #### Why Add 1 to MIN?
 /// The MIN addition is present to help avoid absolute errors on integer ranges.  MIN's
@@ -79,14 +77,14 @@ impl TickerValue for i32 {
     fn from_f64(value: f64)         -> Self { value as i32 }
     fn from_i32(value: i32)         -> Self { value }
 }
-// ############################################################################################## //
 
 
 
-// ####################################### PRECISION TRAIT ###################################### //
-/// Used to apply a generic to the stored_time and time_interval fields within the Ticker type.
+
+
+/// Used to apply a generic to the `stored_time` and `time_interval` fields within the ticker type.
 ///
-/// Supports f32 and f64 for stored_time and time_interval fields within Ticker.
+/// Supports f32 and f64 for `stored_time` and `time_interval` fields within Ticker.
 ///
 /// #### Why Add Precision?
 /// f32 and f64 types for precision determine how accurate the calculations inside the .tick() method are.
@@ -133,11 +131,35 @@ impl TickerPrecision for f64 {
     fn as_f64(self)                         ->  f64  { self }
     fn from_f64(value: f64)                 ->  Self { value }
 }
-// ############################################################################################## //
 
-/// ADD SHTUFFF HERE!
+
+
+
+
+/// Provides tickers with a variety of different behaviors.  Here is each behavior explained:
+///
+/// - **`Looper`**
+///     - The ticker is **immutable** and will loop when `current_value` hits either `start_value` or `end_value`.  When a loop triggers, `current_value` is reset back to `start_value`.
+///
+///
+/// - **`MutLooper`**
+///     - The ticker is **mutable** and will loop when `current_value` hits either `start_value` or `end_value`.  When a loop triggers, `current_value` is reset back to `start_value`.
+///
+///
+/// - **`Oneshot`**
+///     - The ticker is **immutable** and will assign `current_value` to a boundary's value if `current_value` were to hit `start_value` or `end_value`; start and end values are the boundaries.
+///     - The ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
+///
+///
+/// - **`MutOneshot`**
+///     - The ticker is **mutable** and will assign `current_value` to a boundary's value if `current_value` were to hit `start_value` or `end_value`; start and end values are the boundaries.
+///     - The ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
+///
+/// - **`Freezing`**
+///     - The ticker begins **mutable**, but it will become **immutable** once `current_value` hits `end_value`.
+///     - The ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
 #[derive(PartialEq, Reflect, Debug)]
-pub enum TickerForms {
+pub enum TickerBehaviors {
     Looper,
     MutLooper,
     Oneshot,
@@ -145,7 +167,10 @@ pub enum TickerForms {
     Freezing,
 }
 
-// ################################# TICKER IMPLEMENTATION ###################################### //
+
+
+
+
 /// A generic, self-contained counter that advances a value over time at a fixed time_interval.
 ///
 /// MAKE SURE TO EXPLAIN TIME IN VARIOUS WAYS, DON'T JUST USE FRAMES!  USE THE CLOWNS OVER BLINKS EXAMPLE!
@@ -159,22 +184,34 @@ pub struct Ticker<V: TickerValue, P: TickerPrecision> {
     is_paused:                  bool,
     is_ticking_up:              bool,
     is_handling_time_spikes:    bool,
-    form:                       TickerForms,
+    behavior:                   TickerBehaviors,
 }
 
 impl<V: TickerValue, P: TickerPrecision> Default for Ticker<V, P> {
+
+    /// Creates a MutLooper ticker that has the following properties:
+    /// - start_value is set to 0.
+    /// - Ticks `current_value` from 0 to the ticker's max integer value ([`V::MAX`]).
+    /// - end_value is set to the ticker's max integer value ([`V::MAX`]).
+    /// - time interval is set to 1.0.
+    /// - Begins unpaused.
+    /// - Will tick up.
+    /// - Will handle time spikes.
     ///
+    /// #### What is the Behavior of a MutLooper Ticker?
+    /// The ticker is **mutable** and will loop when `current_value` hits either `start_value` or `end_value`.
+    /// When a loop triggers, `current_value` is reset back to `start_value`.
     fn default() -> Self {
         Self {
             start_value:                V::from_i32(0),
             current_value:              V::from_i32(0),
-            end_value:                  V::from_i32(100),
+            end_value:                  V::MAX,
             time_interval:              P::from_f64(1.0),
             stored_time:                P::from_f64(0.0),
             is_paused:                  false,
             is_ticking_up:              true,
             is_handling_time_spikes:    true,
-            form:                       TickerForms::MutLooper,
+            behavior:                   TickerBehaviors::MutLooper,
         }
     }
 }
@@ -182,10 +219,7 @@ impl<V: TickerValue, P: TickerPrecision> Default for Ticker<V, P> {
 impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     // ##################################### CONSTRUCTORS ######################################## //
-    /// Use this when you need to completely define your own Ticker; full-custom.
-    ///
-    /// #### Important
-    /// Text
+    /// Used for completely defining a custom ticker.
     pub fn new(
         start_value:                V,
         current_value:              V,
@@ -194,7 +228,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
         is_paused:                  bool,
         is_ticking_up:              bool,
         is_handling_time_spikes:    bool,
-        form:                       TickerForms,
+        behavior:                   TickerBehaviors,
     ) -> Self {
 
         let min = start_value.min(end_value);
@@ -214,16 +248,23 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
             is_paused,
             is_ticking_up,
             is_handling_time_spikes,
-            form,
+            behavior,
         }
     }
 
+    /// Creates an unpaused Looper ticker that ticks `current_value` from the supplied `starting_value` to the
+    /// passed `end_value`.
     ///
+    /// #### What is the Behavior of a Looper Ticker?
+    /// The ticker is **immutable** and will loop when `current_value` hits either `start_value` or `end_value`.
+    /// When a loop triggers, `current_value` is reset back to `start_value`.
+    ///
+    /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
+    /// Up.
     pub fn new_looper(
         starting_value:             V,
         end_value:                  V,
         time_interval:              P,
-        is_ticking_up:              bool,
         is_handling_time_spikes:    bool,
     ) -> Self {
 
@@ -238,18 +279,129 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
             time_interval,
             stored_time:                P::from_f64(0.0),
             is_paused:                  false,
-            is_ticking_up,
+            is_ticking_up:              starting_value <= end_value,
             is_handling_time_spikes,
-            form:                       TickerForms::Looper,
+            behavior:                   TickerBehaviors::Looper,
         }
     }
 
+    /// Creates an unpaused Looper ticker.
     ///
+    /// #### What is the Behavior of a Looper Ticker?
+    /// The ticker is **immutable** and will loop when `current_value` hits either `start_value` or `end_value`.
+    /// When a loop triggers, `current_value` is reset back to `start_value`.
+    pub fn new_looper_custom(
+        start_value:                V,
+        current_value:              V,
+        end_value:                  V,
+        time_interval:              P,
+        is_ticking_up:              bool,
+        is_handling_time_spikes:    bool,
+    ) -> Self {
+
+        let min = start_value.min(end_value);
+        let max = start_value.max(end_value);
+
+        // Panic Evaluators
+        check_if_value_is_within_range(start_value, V::MIN, V::MAX);
+        check_if_value_is_within_range(current_value, min, max);
+        check_if_value_is_within_range(end_value, V::MIN, V::MAX);
+
+        Self {
+            start_value,
+            current_value,
+            end_value,
+            time_interval,
+            stored_time:                P::from_f64(0.0),
+            is_paused:                  false,
+            is_ticking_up,
+            is_handling_time_spikes,
+            behavior:                   TickerBehaviors::Looper,
+        }
+    }
+
+    /// Creates an unpaused MutLooper ticker that ticks `current_value` from the supplied `starting_value` to the
+    /// passed `end_value`.
+    ///
+    /// #### What is the Behavior of a MutLooper Ticker?
+    /// The ticker is **mutable** and will loop when `current_value` hits either `start_value` or `end_value`.
+    /// When a loop triggers, `current_value` is reset back to `start_value`.
+    ///
+    /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
+    /// Up.
+    pub fn new_mutlooper(
+        starting_value:             V,
+        end_value:                  V,
+        time_interval:              P,
+        is_handling_time_spikes:    bool,
+    ) -> Self {
+
+        // Panic Evaluators
+        check_if_value_is_within_range(starting_value, V::MIN, V::MAX);
+        check_if_value_is_within_range(end_value, V::MIN, V::MAX);
+
+        Self {
+            start_value:                starting_value,
+            current_value:              starting_value,
+            end_value,
+            time_interval,
+            stored_time:                P::from_f64(0.0),
+            is_paused:                  false,
+            is_ticking_up:              starting_value <= end_value,
+            is_handling_time_spikes,
+            behavior:                   TickerBehaviors::MutLooper,
+        }
+    }
+
+    /// Creates an unpaused MutLooper ticker.
+    ///
+    /// #### What is the Behavior of a MutLooper Ticker?
+    /// The ticker is **mutable** and will loop when `current_value` hits either `start_value` or `end_value`.
+    /// When a loop triggers, `current_value` is reset back to `start_value`.
+    pub fn new_mutlooper_custom(
+        start_value:                V,
+        current_value:              V,
+        end_value:                  V,
+        time_interval:              P,
+        is_ticking_up:              bool,
+        is_handling_time_spikes:    bool,
+    ) -> Self {
+
+        let min = start_value.min(end_value);
+        let max = start_value.max(end_value);
+
+        // Panic Evaluators
+        check_if_value_is_within_range(start_value, V::MIN, V::MAX);
+        check_if_value_is_within_range(current_value, min, max);
+        check_if_value_is_within_range(end_value, V::MIN, V::MAX);
+
+        Self {
+            start_value,
+            current_value,
+            end_value,
+            time_interval,
+            stored_time:                P::from_f64(0.0),
+            is_paused:                  false,
+            is_ticking_up,
+            is_handling_time_spikes,
+            behavior:                   TickerBehaviors::MutLooper,
+        }
+    }
+
+    /// Creates an unpaused Oneshot ticker that ticks `current_value` from the supplied `starting_value` to the
+    /// passed `end_value`.
+    ///
+    /// #### What is the Behavior of a Oneshot Ticker?
+    /// The ticker is **immutable** and will assign `current_value` to a boundary's value if `current_value` were to hit `start_value` or `end_value`; start and end values are the boundaries.
+    ///
+    /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
+    ///
+    /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
+    /// Up.
     pub fn new_oneshot(
         starting_value:             V,
         end_value:                  V,
         time_interval:              P,
-        is_ticking_up:              bool,
         is_handling_time_spikes:    bool,
     ) -> Self {
 
@@ -264,45 +416,62 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
             time_interval,
             stored_time:                P::from_f64(0.0),
             is_paused:                  false,
-            is_ticking_up,
+            is_ticking_up:              starting_value <= end_value,
             is_handling_time_spikes,
-            form:                       TickerForms::Oneshot,
+            behavior:                   TickerBehaviors::Oneshot,
         }
     }
 
+    /// Creates an unpaused Oneshot ticker.
     ///
-    pub fn new_mut_looper(
-        starting_value:             V,
+    /// #### What is the Behavior of a Oneshot Ticker?
+    /// The ticker is **immutable** and will assign `current_value` to a boundary's value if `current_value` were to hit `start_value` or `end_value`; start and end values are the boundaries.
+    ///
+    /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
+    pub fn new_oneshot_custom(
+        start_value:                V,
+        current_value:              V,
         end_value:                  V,
         time_interval:              P,
         is_ticking_up:              bool,
         is_handling_time_spikes:    bool,
     ) -> Self {
 
+        let min = start_value.min(end_value);
+        let max = start_value.max(end_value);
+
         // Panic Evaluators
-        check_if_value_is_within_range(starting_value, V::MIN, V::MAX);
+        check_if_value_is_within_range(start_value, V::MIN, V::MAX);
+        check_if_value_is_within_range(current_value, min, max);
         check_if_value_is_within_range(end_value, V::MIN, V::MAX);
 
         Self {
-            start_value:                starting_value,
-            current_value:              starting_value,
+            start_value,
+            current_value,
             end_value,
             time_interval,
             stored_time:                P::from_f64(0.0),
             is_paused:                  false,
             is_ticking_up,
             is_handling_time_spikes,
-            form:                       TickerForms::MutLooper,
+            behavior:                   TickerBehaviors::Oneshot,
         }
     }
 
-
+    /// Creates an unpaused MutOneshot ticker that ticks `current_value` from the supplied `starting_value` to the
+    /// passed `end_value`.
     ///
-    pub fn new_mut_oneshot(
+    /// #### What is the Behavior of a MutOneshot Ticker?
+    /// The ticker is **mutable** and will assign `current_value` to a boundary's value if `current_value` were to hit `start_value` or `end_value`; start and end values are the boundaries.
+    ///
+    /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
+    ///
+    /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
+    /// Up.
+    pub fn new_mutoneshot(
         starting_value:             V,
         end_value:                  V,
         time_interval:              P,
-        is_ticking_up:              bool,
         is_handling_time_spikes:    bool,
     ) -> Self {
 
@@ -317,19 +486,62 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
             time_interval,
             stored_time:                P::from_f64(0.0),
             is_paused:                  false,
-            is_ticking_up,
+            is_ticking_up:              starting_value <= end_value,
             is_handling_time_spikes,
-            form:                       TickerForms::MutOneshot,
+            behavior:                   TickerBehaviors::MutOneshot,
         }
     }
 
-
+    /// Creates an unpaused MutOneshot ticker.
     ///
+    /// #### What is the Behavior of a MutOneshot Ticker?
+    /// The ticker is **mutable** and will assign `current_value` to a boundary's value if `current_value` were to hit `start_value` or `end_value`; start and end values are the boundaries.
+    ///
+    /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
+    pub fn new_mutoneshot_custom(
+        start_value:                V,
+        current_value:              V,
+        end_value:                  V,
+        time_interval:              P,
+        is_ticking_up:              bool,
+        is_handling_time_spikes:    bool,
+    ) -> Self {
+
+        let min = start_value.min(end_value);
+        let max = start_value.max(end_value);
+
+        // Panic Evaluators
+        check_if_value_is_within_range(start_value, V::MIN, V::MAX);
+        check_if_value_is_within_range(current_value, min, max);
+        check_if_value_is_within_range(end_value, V::MIN, V::MAX);
+
+        Self {
+            start_value,
+            current_value,
+            end_value,
+            time_interval,
+            stored_time:                P::from_f64(0.0),
+            is_paused:                  false,
+            is_ticking_up,
+            is_handling_time_spikes,
+            behavior:                   TickerBehaviors::MutOneshot,
+        }
+    }
+
+    /// Creates an unpaused Freezing ticker that ticks `current_value` from the supplied `starting_value` to the
+    /// passed `end_value`.
+    ///
+    /// #### What is the Behavior of a Freezing Ticker?
+    /// The ticker begins **mutable**, but it will become **immutable** once `current_value` hits `end_value`.
+    ///
+    /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
+    ///
+    /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
+    /// Up.
     pub fn new_freezing(
         starting_value:             V,
         end_value:                  V,
         time_interval:              P,
-        is_ticking_up:              bool,
         is_handling_time_spikes:    bool,
     ) -> Self {
 
@@ -344,9 +556,45 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
             time_interval,
             stored_time:                P::from_f64(0.0),
             is_paused:                  false,
+            is_ticking_up:              starting_value <= end_value,
+            is_handling_time_spikes,
+            behavior:                   TickerBehaviors::Freezing,
+        }
+    }
+
+    /// Creates an unpaused Freezing ticker.
+    ///
+    /// #### What is the Behavior of a Freezing Ticker?
+    /// The ticker begins **mutable**, but it will become **immutable** once `current_value` hits `end_value`.
+    ///
+    /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
+    pub fn new_freezing_custom(
+        start_value:                V,
+        current_value:              V,
+        end_value:                  V,
+        time_interval:              P,
+        is_ticking_up:              bool,
+        is_handling_time_spikes:    bool,
+    ) -> Self {
+
+        let min = start_value.min(end_value);
+        let max = start_value.max(end_value);
+
+        // Panic Evaluators
+        check_if_value_is_within_range(start_value, V::MIN, V::MAX);
+        check_if_value_is_within_range(current_value, min, max);
+        check_if_value_is_within_range(end_value, V::MIN, V::MAX);
+
+        Self {
+            start_value,
+            current_value,
+            end_value,
+            time_interval,
+            stored_time:                P::from_f64(0.0),
+            is_paused:                  false,
             is_ticking_up,
             is_handling_time_spikes,
-            form:                       TickerForms::Freezing,
+            behavior:                   TickerBehaviors::Freezing,
         }
     }
     // ######################################################################################## //
@@ -354,7 +602,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
 
     // ##################################### GETTERS ########################################## //
-    /// Returns the start_value of a Ticker.
+    /// Returns the start_value of a ticker.
     #[inline]
     pub fn start_value(&self) -> V {
         self.start_value
@@ -374,21 +622,14 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Returns the time_interval of a Ticker.
     ///
-    /// # What Exactly is the Interval?
-    /// The time_interval is what dictates how long in \[INSERT_TIME_UNIT_HERE\] that it takes for current_value to increase
-    /// or decrease by 1; direction depends on is_ticking_up.
+    /// #### What Exactly is time_interval?
+    /// The time_interval is what dictates how long in \[INSERT_TIME_UNIT_HERE\] that it takes for
+    /// current_value to increase or decrease by 1; direction depends on `is_ticking_up`.
     ///
-    /// # Unit Type of Interval?
-    /// Ticker has no built-in concept of "seconds" or any other unit — time_interval and stored_time
-    /// are just two numbers compared against each other inside .tick(). The unit they represent is
-    /// determined entirely by whatever unit the caller's delta is expressed in.
-    ///
-    /// The ticker_ticking system happens to pass seconds (the difference in time between
-    /// 2 frames, sourced from Bevy's Time resource), so time_interval is conventionally seconds when
-    /// using that system. But nothing stops a custom implementation from feeding .tick() a delta
-    /// in any other unit that meaningfully represents change over some time_interval.  In a custom
-    /// implementation, it could literally be the difference in the number of clowns seen between
-    /// two blinks.  In such a case, time_interval would have clowns as its unit.
+    /// #### Unit Type of time_interval?
+    /// ticker has no built-in concept of "seconds" or any other unit — time_interval and stored_time
+    /// are just two numbers compared against each other inside the .tick() method. The unit they represent is
+    /// determined entirely by whatever unit they pass into the .tick() method.
     #[inline]
     pub fn time_interval(&self) -> P {
         self.time_interval
@@ -396,42 +637,35 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Returns the stored_time of a Ticker.
     ///
-    /// # When Should I Use This Method?
+    /// #### When Should I Use This Method?
     /// Realistically speaking, this method has limited use in most cases — stored_time holds
     /// only the leftover remainder from the last call to .tick(), not the total elapsed time
-    /// since the Ticker was created or last reset.  It exists mainly for debugging, logging, or
+    /// since the ticker was created or last reset.  It exists mainly for debugging, logging, or
     /// custom structures that need to inspect or manually carry over a Ticker's in-progress
     /// timing state.
     ///
-    /// # Unit Type of Accrued Delta?
-    /// Ticker has no built-in concept of "seconds" or any other unit — time_interval and stored_time
-    /// are just two numbers compared against each other inside .tick(). The unit they represent is
-    /// determined entirely by whatever unit the caller's delta is expressed in.
-    ///
-    /// The ticker_ticking system happens to pass seconds (the difference in time between
-    /// 2 frames, sourced from Bevy's Time resource), so stored_time is conventionally seconds between frames when
-    /// using that system. But nothing stops a custom implementation from feeding .tick() a delta
-    /// in any other unit that meaningfully represents change over some time_interval.  In a custom
-    /// implementation, it could literally be the difference in the number of clowns seen between
-    /// two blinks.  In such a case, stored_time would be clowns seen between blinks.
+    /// #### Unit Type of stored_time?
+    /// ticker has no built-in concept of "seconds" or any other unit — time_interval and stored_time
+    /// are just two numbers compared against each other inside the .tick() method. The unit they represent is
+    /// determined entirely by whatever unit they pass into the .tick() method.
     #[inline]
     pub fn stored_time(&self) -> P {
         self.stored_time
     }
 
-    /// Returns the paused state of a Ticker.
+    /// Returns true if the ticker is paused, false otherwise.
     #[inline]
     pub fn is_paused(&self) -> bool {
         self.is_paused
     }
 
-    /// Returns true if a Ticker is set to tick its `current_value` up, false otherwise.
+    /// Returns true if a ticker is set to tick its `current_value` up, false otherwise.
     #[inline]
     pub fn is_ticking_up(&self) -> bool {
         self.is_ticking_up
     }
 
-    /// Returns true if a Ticker is set to tick its `current_value` down, false otherwise.
+    /// Returns true if a ticker is set to tick its `current_value` down, false otherwise.
     #[inline]
     pub fn is_ticking_down(&self) -> bool {
         if self.is_ticking_up == false {
@@ -442,22 +676,22 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
         }
     }
 
-    /// Returns whether or not this Ticker can fire more than one tick in a single .tick() call.
+    /// Returns true if the ticker can fire more than once in a single .tick() call, false otherwise.
     ///
-    /// - `TRUE`: When a lot of time (or whatever unit delta in .tick() represents) has built up since the
-    /// last call, the Ticker will catch up all at once — firing every tick it's owed in one go.
+    /// - `TRUE`: The ticker can change `current_value` by any number greater than or equal to 0 per
+    /// .tick() call; the ticker will catch up all at once.
     ///
-    /// - `FALSE`: The Ticker only ever fires one tick per call, no matter how much has built up.
-    /// Anything extra is saved and carried over to the next call instead of being used right away.
+    /// - `FALSE`: The ticker can `change current_value` by 1 or 0 per .tick() call, no matter how much
+    /// time has built up between .tick() calls.
     #[inline]
     pub fn is_handling_time_spikes(&self) -> bool {
         self.is_handling_time_spikes
     }
 
-    ///
+    /// Returns the reference to the type of behavior a ticker is set to.
     #[inline]
-    pub fn form(&self) -> &TickerForms {
-        &self.form
+    pub fn behavior(&self) -> &TickerBehaviors {
+        &self.behavior
     }
     // ######################################################################################## //
 
@@ -466,24 +700,24 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     // ##################################### SETTERS ########################################## //
     /// Changes `start_value` to the passed value.
     ///
-    /// # Important
+    /// #### Important
     /// `start_value` can NOT go out of the range of `V::MIN` to `V::MAX`.
     /// Attempting to set `start_value` outside the range will cause it to be clamped down.
     #[inline]
     pub fn set_start_value(&mut self, value: V) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.start_value = value.clamp(V::MIN, V::MAX);
         }
     }
 
     /// Changes `current_value` to the passed value.
     ///
-    /// # Important
+    /// #### Important
     /// `current_value` can NOT go out of the range that `start_value` and `end_value` create.
     /// Attempting to set `current_value` outside the range will cause it to be clamped down.
     #[inline]
     pub fn set_current_value(&mut self, value: V) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             let min = self.start_value.min(self.end_value);
             let max = self.start_value.max(self.end_value);
             self.current_value = value.clamp(min, max);
@@ -492,114 +726,109 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Changes `end_value` to the passed value.
     ///
-    /// # Important
+    /// #### Important
     /// `end_value` can NOT go out of the range of `V::MIN` to `V::MAX`.
     /// Attempting to set `end_value` outside the range will cause it to be clamped down.
     #[inline]
     pub fn set_end_value(&mut self, value: V) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.end_value = value.clamp(V::MIN, V::MAX);
         }
     }
 
-    /// Pauses a ticker's ticking.
-    ///
-    /// This prevents the .tick() method from doing any calculations.
+    /// Prevents .tick() calls on a ticker from doing their job.
     #[inline]
     pub fn pause(&mut self) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.is_paused = true;
         }
     }
 
-    /// Unpauses a ticker's ticking.
-    ///
-    /// This allows the .tick() method to resume its calculations.
+    /// Allows .tick() calls on a ticker to do their job.
     #[inline]
     pub fn unpause(&mut self) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.is_paused = false;
         }
     }
 
     /// Causes the ticker's current_value to count up.
-    ///
-    /// Will allow calculated ticks inside the .tick() method to add to current_value, rather than subtract.
     #[inline]
     pub fn tick_up(&mut self) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.is_ticking_up = true;
         }
     }
 
     /// Causes the ticker's current_value to count down.
-    ///
-    /// Will allow calculated ticks inside the .tick() method to subtract from current_value, rather than add.
     #[inline]
     pub fn tick_down(&mut self) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.is_ticking_up = false;
         }
     }
 
-    ///
+    /// Will make it so that .tick() calls on a ticker are to add or subtract all built-up integer time since
+    /// the last .tick() call to `current_value`; addition/subtraction is dependent on `is_ticking_up`.
+    /// Any floating remainder gets put into stored_time for the next .tick() call.
     #[inline]
     pub fn start_handling_time_spikes(&mut self) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.is_handling_time_spikes = true;
         }
     }
 
-    ///
+    /// Will make it so that .tick() calls on a ticker are to add or subtract 1 to `current_value`;
+    /// addition/subtraction is dependent on `is_ticking_up`.
     #[inline]
     pub fn stop_handling_time_spikes(&mut self) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.is_handling_time_spikes = false;
         }
     }
 
-    /// ADD MORE TO THIS DOC COMMENT
+    /// Switches the behavior of a ticker to the passed TickerBehavior type.
     ///
-    /// #### Important
-    /// Can be used to stop looping by switching the form from looper to MutOneshot or oneshot variants.
-    /// Can be used to switch from immutable forms to mutable ones.
+    /// #### Important Aspects of This Setter
+    /// - Can be used to switch the mutability of a Ticker.
+    /// - Can be used to turn on/off the looping behavior of a Ticker.
     #[inline]
-    pub fn set_form(&mut self, new_form: TickerForms) {
-        self.form = new_form;
+    pub fn set_behavior(&mut self, new_behavior: TickerBehaviors) {
+        self.behavior = new_behavior;
     }
     // ######################################################################################## //
 
 
 
     // ################################### EQUALITY METHODS ##################################### //
-    /// Returns true if the current_value and the start_value are equal to one another, false otherwise.
+    /// Returns true if the `current_value` and the `start_value` are equal to one another, false otherwise.
     ///
     /// # When Should I Use This Method?
-    /// Use this method in oneshot tickers that count to start_value if you want to determine if the
-    /// oneshot ticker is finished.
+    /// Use this method in oneshot tickers that count to `start_value` if you want to determine if the
+    /// oneshot is finished.
     #[inline]
     pub fn is_current_at_start(&self) -> bool {
         self.current_value == self.start_value
     }
 
-    /// Returns true if the current_value and the end_value are equal to one another, false otherwise.
+    /// Returns true if the `current_value` and the `end_value` are equal to one another, false otherwise.
     ///
     /// # When Should I Use This Method?
-    /// Use this method in oneshot tickers that count to end_value if you want to determine if the
-    /// oneshot ticker is finished.
+    /// Use this method in oneshot tickers that count to `end_value` if you want to determine if the
+    /// oneshot is finished.
     #[inline]
     pub fn is_current_at_end(&self) -> bool {
         self.current_value == self.end_value
     }
 
-    /// Returns true if the start_value and the end_value are equal to one another, false otherwise.
+    /// Returns true if the `start_value` and the `end_value` are equal to one another, false otherwise.
     ///
     /// # Why Does This Method Exist?
-    /// start_value and end_value can equal one another since their values can be changed or set to
-    /// the same value at the creation of a Ticker instance.
+    /// `start_value` and `end_value` can equal one another since their values can be changed or set to
+    /// the same value at the creation of a ticker instance.
     ///
     /// # When Should I Use This Method?
-    /// Only scenario I can think for using this would be when the bounds of a Ticker are slowly tightening
+    /// Only scenario I can think for using this would be when the bounds of a ticker are slowly tightening
     /// and you need something to check when they have finally met one another.  It is possible to tighten
     /// the bounds by constantly setting `start_value` and `end_value` to new numbers.
     #[inline]
@@ -611,7 +840,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
 
     // ################################# DIFFERENCE METHODS ################################### //
-    /// Returns the difference between current_value and start_value.
+    /// Returns the difference between `current_value` and `start_value`.
     ///
     /// Will only return positive numbers, including 0.
     pub fn difference_from_start(&self) -> i64 {
@@ -620,7 +849,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
         max - min
     }
 
-    /// Returns the difference between current_value and end_value.
+    /// Returns the difference between `current_value` and `end_value`.
     ///
     /// Will only return positive numbers, including 0.
     pub fn difference_from_end(&self) -> i64 {
@@ -629,7 +858,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
         max - min
     }
 
-    /// Returns the difference between start_value and end_value.
+    /// Returns the difference between `start_value` and `end_value`.
     ///
     /// Will only return positive numbers, including 0.
     pub fn difference_from_start_to_end(&self) -> i64 {
@@ -996,59 +1225,59 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
 
     // ################################### ADD METHODS ######################################## //
-    /// Adds to the start_value of the ticker by the passed value.  Can take in negatives for subtraction.
+    /// Adds to the `start_value` of the ticker by the passed value.  Can take in negatives for subtraction.
     ///
     /// Will not let the result of summing cause overflow or wrapping; results will always be within `V::MIN` to `V::MAX` (inclusive).
     #[inline]
     pub fn add_to_start_value(&mut self, value: V) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.start_value = self.start_value.sat_add(value).clamp(V::MIN, V::MAX);
         }
     }
 
-    /// Adds to the current_value of the ticker by the passed value.  Can take in negatives for subtraction.
+    /// Adds to the `current_value` of the ticker by the passed value.  Can take in negatives for subtraction.
     ///
     /// Will not let the result of summing cause overflow or wrapping; results will always be within `start_value` to `end_value` (inclusive).
     #[inline]
     pub fn add_to_current_value(&mut self, value: V) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             let min = self.start_value.min(self.end_value);
             let max = self.start_value.max(self.end_value);
             self.current_value = self.current_value.sat_add(value).clamp(min, max);
         }
     }
 
-    /// Adds to the end_value of the ticker by the passed value.  Can take in negatives for subtraction.
+    /// Adds to the `end_value` of the ticker by the passed value.  Can take in negatives for subtraction.
     ///
     /// Will not let the result of summing cause overflow or wrapping; results will always be within `V::MIN` to `V::MAX` (inclusive).
     #[inline]
     pub fn add_to_end_value(&mut self, value: V) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.end_value = self.end_value.sat_add(value).clamp(V::MIN, V::MAX);
         }
     }
 
-    /// Adds to the time_interval of the ticker by the passed value.  Can take in negatives for subtraction.
+    /// Adds to the `time_interval` of the ticker by the passed value.  Can take in negatives for subtraction.
     ///
-    /// #### What Values Can Interval Be Set To?
-    /// Interval can never be 0, a negative number, or go past `P::MAX`; the reasoning for this is that it would cause the
-    /// .tick method to create crazy values.
+    /// #### What Values Can time_interval Be Set To?
+    /// time_interval can never be 0, a negative number, or go past `P::MAX`; the reasoning for this is that it would cause the
+    /// .tick() method to create crazy values.
     ///
     /// #### Can Interval Flip Direction of a Ticker?
     /// No. If your goal is to slow time or slow an accumulation to the point that it reverses it,
     /// I suggest you flip the tick direction using .tick_up() or .tick_down() at a specific current_value or
-    /// after the rate of slow/speed you're applying has hit a specific value.
+    /// after the rate of speed you're applying has hit a specific value.
     #[inline]
     pub fn add_to_time_interval(&mut self, value: P) {
-        if self.is_currently_mutable() {
+        if self.is_mutable() {
             self.time_interval = (self.time_interval + value).clamp(P::MIN_POSITIVE, P::MAX);
         }
     }
-    // ######################################################################################## //
+    // ########################################################################################## //
 
 
 
-    // ################################# MISCELLANEOUS METHODS ################################ //
+    // ################################### PERCENTAGE METHODS ################################### //
     /// Returns the percentage of `current_value`'s distance from `start_value`, measured across
     /// the full range from `start_value` to `end_value`.
     ///
@@ -1120,14 +1349,18 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
         (end - current) * range_reciprocal
     }
+    // ########################################################################################## //
 
-    /// Will set the current_value to be equal to the start_value.
+
+
+    // ##################################### RESET METHODS ###################################### //
+    /// Will set the `current_value` to be equal to the `start_value`.
     #[inline]
     pub fn reset(&mut self) {
         self.current_value = self.start_value;
     }
 
-    /// Will set the current_value to be equal to the start_value and zero out the stored_time.
+    /// Will set the `current_value` to be equal to the `start_value` and zero out the `stored_time`.
     ///
     /// #### When To Use This Over Reset?
     /// Best to use when you want to completely wipe whatever has been accumulated, including the
@@ -1138,44 +1371,52 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
         self.current_value = self.start_value;
         self.stored_time = P::from_f64(0.0);
     }
+    // ########################################################################################## //
 
-    /// #### Description of Method
-    /// Used to advance a Ticker by taking in a passing of time between 2 events, *usually* for events
-    /// that happen both consistently and constantly (such as frames rendering); it does have the
+
+
+    // ########################### THE TICK (THE MOST IMPORTANT METHOD) ######################### //
+    /// #### Description of .tick()
+    /// Used to advance a ticker by taking in a passing of time between 2 events, *usually* for events
+    /// that happen both consistently and constantly (such as when frames render); it does have the
     /// ability to take in **any** delta time.
     ///
     /// #### What The Hell Does Ticking Do?
     /// The simplified version (read the method's code for the complex version) of calling the .tick()
-    /// method on a Ticker is as follows:
+    /// method on a ticker is as follows:
     /// 1. Increase stored_time by the value passed to the .tick() call (elapsed_time_between_events).
-    /// 2. If stored_time is greater than or equal to time_interval, change current_value.
-    /// 3. Reassign stored_time to the result of (stored_time %= time_interval).  We do this to carry
-    /// over our remainder that will not be part of current_value's change.
+    /// 2. If stored_time is greater than or equal to the time_interval, change current_value.
+    /// 3. Reassign stored_time to the result of `stored_time %= time_interval`.  We do this to carry
+    /// over our remainder to keep the state of a Ticker's time accurate to the events that are being
+    /// tracked.
     ///
-    /// #### What Impacts This Method And How?
-    /// The fields of a Ticker which impact the calculations inside this method are as follows:
+    /// #### What Impacts Ticking And How?
+    /// The fields of a ticker which impact the calculations inside this method are as follows:
     /// - `is_paused`
     ///     - **True** : Prevent the tick method from doing anything.
     ///     - **False** : Tick method will determine if current_value needs to be changed.
-    /// - `is_looping`
-    ///     - **True** : Reset current_value to start_value when a Ticker boundary is hit; boundaries are start_value and end_value.
-    ///     - **False** :  current_value will be set to the boundary it hits or goes past.
     /// - `is_ticking_up`
     ///     - **True** : .tick() calls will increase current_value.
     ///     - **False** : .tick() calls will decrease current_value.
     /// - `is_handling_time_spikes`
     ///     - **True** : The full integer magnitude from the result of `elapsed_time + stored_time` will be used to change current_value.
     ///     - **False** : As long as stored_time is greater than or equal to the time_interval, current_value will change by 1.
+    /// - `behavior`
+    ///     - **Looper** : Reset current_value to start_value when a ticker boundary is hit; boundaries are start_value and end_value.
+    ///     - **MutLooper** :  Reset current_value to start_value when a ticker boundary is hit; boundaries are start_value and end_value.
+    ///     - **Oneshot** : current_value will be set to the boundary it hits or goes past.
+    ///     - **MutOneshot** : current_value will be set to the boundary it hits or goes past.
+    ///     - **Freezing** : current_value will be set to the boundary it hits or goes past.
     ///
-    /// #### Does This Method Impact a Ticker's Units?
+    /// #### Does .tick() Impact a Ticker's Units?
     /// Yes.  The units for a Ticker's integers and float fields are based on what is passed into the
     /// .tick() method.  If the passed value represents the difference in seconds between 2 frames,
     /// the Ticker's time_interval and stored_time units would be seconds; the start_value,
     /// current_value, and end_value would also have seconds as their unit.
     ///
-    /// #### Example of Method in Action
+    /// #### Example of .tick() in Action
     /// Consider the following factors first:
-    /// - `The Horror You've Undergone` : You've seen 8 clowns between 2 blinks.  You decide to make a Ticker to calculate this horror.
+    /// - `The Horror You've Undergone` : You've seen 8 clowns between 2 blinks.  You decide to make a ticker to calculate this horror.
     /// - `Ticker's Starting time_interval Value` : 1.7
     /// - `Ticker's Starting stored_time Value` : 0.0
     /// - A .tick() call produced 4 for its magnitude_of_time_that_passed.
@@ -1196,8 +1437,8 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// 8. Voila. .tick() call is complete.
     pub fn tick(&mut self, elapsed_time_between_events: P) {
 
-        // POTENTIAL RETURN: Ticker is Paused
-        // If paused, go no further as we don't need to calculate the new current_value since the Ticker is frozen.
+        // POTENTIAL RETURN
+        // If paused, go no further as we don't need to calculate the new current_value since the ticker is frozen.
         if self.is_paused {
             return;
         }
@@ -1207,19 +1448,20 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
         self.stored_time += elapsed_time_between_events;
 
         // DETERMINING PASSED TIME
-        // Acquiring the magnitude of time that passed between events.
-        // How this is done is dependent on whether is_handling_time_spikes is set to true or false.
+        // Acquiring the integer magnitude of time that passed between events.
+        // How this is done is dependent on what is_handling_time_spikes is set to.
         let magnitude_of_time_that_passed = match self.is_handling_time_spikes {
 
             // PASSED TIME WHEN HANDLING TIME SPIKES
-            // When time spike handling is active, all magnitude_of_time_that_passed that accumulated during a large
-            // elapsed_time_between_events are collected at once.  The remainder after division is kept in stored_time
-            // so that partial progress toward the next tick is not lost between the events that are
-            // being timed.
+            // When time spike handling is active, the entire integer value of time that passed since
+            // the last .tick() call will be used for magnitude_of_time_that_passed.  The floating
+            // remainder after division is kept in stored_time so that partial progress toward the
+            // next tick is not lost between the events that are being timed.
             //
-            // as_64() in tick_count_truncated_to_value_type is acting as a bridge for V and P to work
-            // with one another.  It does mean that a typecast to f64 happens here, but the requested
-            // precision is still maintained since the calculated magnitude_of_time_that_passed happened inside magnitude_of_time_that_passed_calculated_in_active_precision.
+            // as_64() in tick_count_truncated_to_value_type is acting as a bridge for the V and P generics
+            // to work with one another.  It does mean that a typecast to f64 happens here, but the requested
+            // precision is still maintained since the calculated magnitude_of_time_that_passed happened
+            // inside the variable "magnitude_of_time_that_passed_in_active_precision".
             // After that the value gets truncated using V::from_f64 since all V types are integers.
             true => {
                 let magnitude_of_time_that_passed_in_active_precision: P = self.stored_time / self.time_interval;
@@ -1230,17 +1472,18 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
             // PASSED TIME WHEN ~NOT~ HANDLING TIME SPIKES
             // When time spike handling is inactive, only 1 tick is allowed to fire per call
-            // regardless of how large the elapsed_time_between_events was.  One time_interval is subtracted from stored_time
-            // rather than resetting to zero so that the timer remains accurate over time — any
-            // leftover time beyond the single tick carries into the next .tick() call.
+            // regardless of how large the elapsed_time_between_events was.  The value of time_interval
+            // is subtracted from stored_time rather than resetting to zero so that the timer remains
+            // accurate over continuous .tick() calls — any leftover time beyond the single tick carries
+            // into the next .tick() call.
             //
             // We subtract by time_interval (rather than just discarding stored_time) specifically because
             // is_handling_time_spikes can be toggled at runtime.  If this flag is permanently false for
-            // a given Ticker, the leftover precision wouldn't matter — each call only ever checks "has
+            // a given ticker, the leftover precision wouldn't matter — each call only ever checks "has
             // one time_interval passed, yes or no" regardless of how much excess sits in stored_time.  But
             // since the flag can flip to true later, preserving the leftover ensures that switch correctly
-            // picks up every tick that was quietly accumulating while spike handling was off, rather than
-            // discarding that history the moment multi-tick firing gets re-enabled.
+            // picks up every unit of time that was quietly accumulating while spike handling was off,
+            // rather than discarding that history the moment is_handling_time_spikes gets re-enabled.
             false => match self.stored_time >= self.time_interval {
                 true => {
                     self.stored_time -= self.time_interval;
@@ -1250,18 +1493,18 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
             },
         };
 
-        // TICK FIRE TO CHANGE CURRENT_VALUE
-        // Will only ever tick fire if the stored_time pushed magnitude_of_time_that_passed beyond the time_interval value.
-        // This check ensures we aren't needlessly firing for every frame, rather we are firing
-        // based on if we've passed over the time_interval threshold using our constant accrual.
+        // DETERMINING IF CURRENT_VALUE SHOULD BE CHANGED
+        // Will only ever change current_value if the stored_time pushed the magnitude_of_time_that_passed
+        // beyond the time_interval value.  This check ensures we aren't needlessly adding to current_value
+        // for every .tick() call; for specifically frame logic, this prevents changing current_value every frame.
         //
         // To be perfectly clear, magnitude_of_time_that_passed can only be greater than 0 if the stored_time went past the
         // time_interval value.  Greater than 0 means 1 or higher in this case, decimals in between 0 and 1
         // don't count.
         if magnitude_of_time_that_passed > V::from_i32(0) {
 
-            // TICK FIRE DIRECTION
-            // Increase or decrease current_value's new host based on if the Ticker is counting up or down.
+            // CURRENT_VALUE ADDITION OR SUBTRACTION?
+            // Increase or decrease current_value's new host based on if the ticker is ticking up or down.
             let new_value = match self.is_ticking_up {
                 true  => self.current_value.sat_add(magnitude_of_time_that_passed),
                 false => self.current_value.sat_sub(magnitude_of_time_that_passed),
@@ -1275,14 +1518,14 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
             let max = self.start_value.max(self.end_value);
 
             // RESET DETERMINATION + CURRENT_VALUE ASSIGNMENT
-            // Will change current_value's assignment using new_value based on the Ticker form.
-            match self.form {
+            // Will change current_value's assignment using new_value based on a ticker's behavior.
+            match self.behavior {
 
                 // LOOPER LOGIC
-                // Assign current_value to its new host and then reset it to the Ticker's start_value
+                // Assign current_value to its new host and then reset it to the ticker's start_value
                 // if either of its boundaries - start_value and end_value - are hit.
-                TickerForms::Looper |
-                TickerForms::MutLooper => {
+                TickerBehaviors::Looper |
+                TickerBehaviors::MutLooper => {
                     self.current_value = new_value;
                     if self.current_value <= min || self.current_value >= max {
                         self.current_value = self.start_value;
@@ -1292,11 +1535,11 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
                 // ONESHOT + FREEZING LOGIC
                 // current_value can assume its new host after new_value has been clamped to the allowed range.
                 // Additionally, stored_time will be zeroed out if current_value hits end_value.  We
-                // do this stored_time wipe since oneshotters and freezings are purposed to clear their
+                // do this wipe for stored_time since oneshotters and freezings are purposed to clear their
                 // time storage upon hitting their end destination.
-                TickerForms::Oneshot |
-                TickerForms::MutOneshot |
-                TickerForms::Freezing => {
+                TickerBehaviors::Oneshot |
+                TickerBehaviors::MutOneshot |
+                TickerBehaviors::Freezing => {
                     self.current_value = new_value.clamp(min, max);
                     if self.current_value == self.end_value {
                         self.stored_time = P::from_f64(0.0);
@@ -1310,16 +1553,15 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
 
     // ###################################### HELPER METHODS ######################################## //
-
-    /// Returns true if the current form of the Ticker is mutable, otherwise false.
+    /// Returns true if the current behavior of the ticker is mutable, otherwise false.
     #[inline]
-    fn is_currently_mutable(&self) -> bool {
-        match self.form {
-            TickerForms::Looper => false,
-            TickerForms::MutLooper => true,
-            TickerForms::Oneshot => false,
-            TickerForms::MutOneshot => true,
-            TickerForms::Freezing => self.current_value != self.end_value,
+    fn is_mutable(&self) -> bool {
+        match self.behavior {
+            TickerBehaviors::Looper     => false,
+            TickerBehaviors::MutLooper  => true,
+            TickerBehaviors::Oneshot    => false,
+            TickerBehaviors::MutOneshot => true,
+            TickerBehaviors::Freezing   => self.current_value != self.end_value,
         }
     }
     // ############################################################################################## //
