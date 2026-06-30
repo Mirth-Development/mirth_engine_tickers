@@ -356,7 +356,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     // ##################################### CONSTRUCTORS ######################################## //
     /// Used for completely defining a custom ticker.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -405,7 +405,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
     /// Up.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -443,7 +443,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// The ticker is **immutable** and will loop when `current_value` hits either `start_value` or `end_value`.
     /// When a loop triggers, `current_value` is reset back to `start_value`.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -490,7 +490,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
     /// Up.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -528,7 +528,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// The ticker is **mutable** and will loop when `current_value` hits either `start_value` or `end_value`.
     /// When a loop triggers, `current_value` is reset back to `start_value`.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -576,7 +576,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
     /// Up.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -614,7 +614,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -662,7 +662,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
     /// Up.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -700,7 +700,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -748,7 +748,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// #### What Is the Tick Direction If My Initial start_value and end_value Are Equal?
     /// Up.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -786,7 +786,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// Additionally, the ticker's `stored_time` is set to 0.0 when `current_value` hits `end_value`.  This ensures the time state is completely reset once it reaches the end.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -829,7 +829,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     // ##################################### GETTERS ########################################## //
     /// Returns the start_value of a ticker.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -843,7 +843,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Returns the current_value of a Ticker.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -857,7 +857,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Returns the end_value of a Ticker.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -880,7 +880,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// are just two numbers compared against each other inside the .tick() method. The unit they represent is
     /// determined entirely by whatever unit they pass into the .tick() method.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -906,7 +906,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// are just two numbers compared against each other inside the .tick() method. The unit they represent is
     /// determined entirely by whatever unit they pass into the .tick() method.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -920,7 +920,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Returns true if the ticker is paused, false otherwise.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -936,7 +936,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Returns true if a ticker is set to tick its `current_value` up, false otherwise.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -950,7 +950,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Returns true if a ticker is set to tick its `current_value` down, false otherwise.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -970,7 +970,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// - `FALSE`: The ticker can `change current_value` by 1 or 0 per .tick() call, no matter how much
     /// time has built up between .tick() calls.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -984,7 +984,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Returns the behavior type of the ticker.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -1012,7 +1012,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// `start_value` can NOT go out of the range of `V::MIN` to `V::MAX`.
     /// Attempting to set `start_value` outside the range will cause it to be clamped down.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1042,7 +1042,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// `current_value` can NOT go out of the range that `start_value` and `end_value` create.
     /// Attempting to set `current_value` outside the range will cause it to be clamped down.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1069,7 +1069,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// `end_value` can NOT go out of the range of `V::MIN` to `V::MAX`.
     /// Attempting to set `end_value` outside the range will cause it to be clamped down.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1095,7 +1095,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Prevents .tick() calls on a ticker from doing their job.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1112,7 +1112,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Allows .tick() calls on a ticker to do their job.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1130,7 +1130,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Causes the ticker's current_value to count up.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1148,7 +1148,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Causes the ticker's current_value to count down.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1168,7 +1168,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// the last .tick() call to `current_value`; addition/subtraction is dependent on `is_ticking_up`.
     /// Any floating remainder gets put into stored_time for the next .tick() call.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1187,7 +1187,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// Will make it so that .tick() calls on a ticker are to add or subtract 1 to `current_value`;
     /// addition/subtraction is dependent on `is_ticking_up`.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1209,7 +1209,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// - Can be used to switch the mutability of a Ticker.
     /// - Can be used to turn on/off the looping behavior of a Ticker.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::{Ticker, TickerBehaviors};
     ///
@@ -1232,7 +1232,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// Use this method in oneshot tickers that count to `start_value` if you want to determine if the
     /// oneshot is finished.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1250,7 +1250,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// Use this method in oneshot tickers that count to `end_value` if you want to determine if the
     /// oneshot is finished.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1273,7 +1273,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// and you need something to check when they have finally met one another.  It is possible to tighten
     /// the bounds by constantly setting `start_value` and `end_value` to new numbers.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1293,7 +1293,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// Will only return positive numbers, including 0.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1310,7 +1310,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// Will only return positive numbers, including 0.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1327,7 +1327,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// Will only return positive numbers, including 0.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1706,7 +1706,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// If the new `start_value` shifts the valid range such that `current_value` is left outside
     /// the boundaries, `current_value` is automatically clamped to the nearest valid edge.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1742,7 +1742,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// Will not let the result of summing cause overflow or wrapping; results will always be within `start_value` to `end_value` (inclusive).
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1767,7 +1767,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// If the new `end_value` shifts the valid range such that `current_value` is left outside
     /// the boundaries, `current_value` is automatically clamped to the nearest valid edge.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1809,7 +1809,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// I suggest you flip the tick direction using .tick_up() or .tick_down() at a specific current_value or
     /// after the rate of speed you're applying has hit a specific value.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1842,7 +1842,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// #### Special Case
     /// Returns `-1.0` if `start_value` and `end_value` are equal, as no meaningful range exists.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1875,7 +1875,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// #### Special Case
     /// Returns `-1.0` if `start_value` and `end_value` are equal, as no meaningful range exists.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1906,7 +1906,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     // ##################################### RESET METHODS ###################################### //
     /// Resets `current_value` back to `start_value`.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -1929,7 +1929,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// timing state.  If you need to carry over the timing state (the remainder in the last .tick()
     /// calculation) then do NOT use this.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
@@ -2141,7 +2141,7 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     // ###################################### HELPER METHODS ######################################## //
     /// Returns true if the current behavior of the ticker is mutable, otherwise false.
     ///
-    /// #### Examples
+    /// #### Example
     /// ```
     /// use mirth_engine_tickers::Ticker;
     ///
