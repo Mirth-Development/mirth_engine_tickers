@@ -7,8 +7,12 @@ description = "A Bevy plugin with types (and their systems) purposed for trackin
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+# Required Dependencies
 bevy_app = { version = "0.19.0", default-features = false }
 bevy_ecs = { version = "0.19.0", default-features = false }
+half = { version = "2.7.1", default-features = false }
+
+# Optional Dependencies (Based on Which Features Are Activated)
 bevy_reflect = { version = "0.19.0", default-features = false, optional = true }
 bevy_time = { version = "0.19.0", default-features = false, optional = true }
 serde = { version = "1", default-features = false, features = ["derive"], optional = true }

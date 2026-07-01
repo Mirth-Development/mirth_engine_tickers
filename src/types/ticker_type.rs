@@ -4,6 +4,7 @@ use bevy_ecs::prelude::*;
 use bevy_reflect::Reflect;
 use std::fmt::Display;
 use std::ops::{Add, AddAssign, Div, Rem, RemAssign, Sub, SubAssign};
+use half::f16;
 
 /// Used to apply a generic to the `start_value`, `current_value`, and `end_value` within the ticker type.
 ///
@@ -31,7 +32,7 @@ Copy                    // TickerValue types are integers, which means they're s
     fn absolute(self)               -> Self;
     fn sat_add(self, value: Self)   -> Self;
     fn sat_sub(self, value: Self)   -> Self;
-    fn as_f32(self)                 -> f32;
+    fn as_f64(self)                 -> f64;
     fn as_i8(self)                  -> i8;
     fn as_i64(self)                 -> i64;
     fn from_f64(value: f64)         -> Self;
@@ -44,7 +45,7 @@ impl TickerValue for i8 {
     fn absolute(self)               -> Self { self.abs() }
     fn sat_add(self, value: Self)   -> Self { self.saturating_add(value) }
     fn sat_sub(self, value: Self)   -> Self { self.saturating_sub(value) }
-    fn as_f32(self)                 -> f32  { self as f32 }
+    fn as_f64(self)                 -> f64  { self as f64 }
     fn as_i8(self)                  -> i8   { self }
     fn as_i64(self)                 -> i64  { self as i64 }
     fn from_f64(value: f64)         -> Self { value as i8 }
@@ -57,7 +58,7 @@ impl TickerValue for i16 {
     fn absolute(self)               -> Self { self.abs() }
     fn sat_add(self, value: Self)   -> Self { self.saturating_add(value) }
     fn sat_sub(self, value: Self)   -> Self { self.saturating_sub(value) }
-    fn as_f32(self)                 -> f32  { self as f32 }
+    fn as_f64(self)                 -> f64  { self as f64 }
     fn as_i8(self)                  -> i8   { self as i8 }
     fn as_i64(self)                 -> i64  { self as i64 }
     fn from_f64(value: f64)         -> Self { value as i16 }
@@ -70,7 +71,7 @@ impl TickerValue for i32 {
     fn absolute(self)               -> Self { self.abs() }
     fn sat_add(self, value: Self)   -> Self { self.saturating_add(value) }
     fn sat_sub(self, value: Self)   -> Self { self.saturating_sub(value) }
-    fn as_f32(self)                 -> f32  { self as f32 }
+    fn as_f64(self)                 -> f64  { self as f64 }
     fn as_i8(self)                  -> i8   { self as i8 }
     fn as_i64(self)                 -> i64  { self as i64 }
     fn from_f64(value: f64)         -> Self { value as i32 }
@@ -81,12 +82,15 @@ impl TickerValue for i32 {
 
 /// Used to apply a generic to the `stored_time` and `time_interval` fields within the ticker type.
 ///
-/// Supports f32 and f64 for `stored_time` and `time_interval` fields within Ticker.
+/// Supports f16, f32, and f64 for `stored_time` and `time_interval` fields within Ticker.
 ///
 /// #### Why Add Precision?
-/// f32 and f64 types for precision determine how accurate the calculations inside the .tick() method are.
-/// f32 being less accurate, f64 being more. Precision control is useful if ridiculous levels of accuracy
-/// is crucial, otherwise pointless.  In most cases, f64 precision is not necessary.
+/// f16, f32, and f64 types for precision determine how accurate the calculations inside the .tick() method are.
+/// f16 being the least accurate, f32 being the middleground, and f64 being the most accurate. Precision
+/// control is useful if your aim is to save memory (especially if thousands of tickers are active).
+/// - `Recommendation for f16 Usage` : 2 Floating Digits Matter
+/// - `Recommendation for f32 Usage` : 5 Floating Digits Matter
+/// - `Recommendation for f64 Usage` : 10 Floating Digits Matter
 ///
 /// #### When to Consider More Precision?
 /// I'd say the only scenarios where the precision jump becomes important is for big clocks (world clocks)
@@ -111,6 +115,14 @@ Copy                    // TickerPrecision types are floats, which means they're
     fn clamp(self, min: Self, max: Self)    -> Self;
     fn as_f64(self)                         -> f64;
     fn from_f64(value: f64)                 -> Self;
+}
+
+impl TickerPrecision for f16 {
+    const MIN_POSITIVE: Self                =   f16::MIN_POSITIVE;
+    const MAX: Self                         =   f16::MAX;
+    fn clamp(self, min: Self, max: Self)    ->  Self { self.clamp(min, max) }
+    fn as_f64(self)                         ->  f64  { self.to_f64() }
+    fn from_f64(value: f64)                 ->  Self { f16::from_f64(value) }
 }
 
 impl TickerPrecision for f32 {
@@ -1844,19 +1856,19 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// // Since it deals with floats, tolerate tiny inaccuracies
     /// let percentage = ticker.percentage_completed();
-    /// assert!((percentage - 0.4).abs() < f32::EPSILON);
+    /// assert!((percentage - 0.4).abs() < f64::EPSILON);
     /// ```
-    pub fn percentage_completed(&self) -> f32 {
+    pub fn percentage_completed(&self) -> f64 {
 
         if self.start_value == self.end_value {
             return -1.0;
         }
 
-        let start: f32 = self.start_value.as_f32();
-        let current: f32 = self.current_value.as_f32();
-        let end: f32 = self.end_value.as_f32();
+        let start: f64 = self.start_value.as_f64();
+        let current: f64 = self.current_value.as_f64();
+        let end: f64 = self.end_value.as_f64();
 
-        let range_reciprocal: f32 = 1.0 / (end - start);
+        let range_reciprocal: f64 = 1.0 / (end - start);
 
         (current - start) * range_reciprocal
     }
@@ -1877,19 +1889,19 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     ///
     /// // Since it deals with floats, tolerate tiny inaccuracies
     /// let remaining = ticker.percentage_remaining();
-    /// assert!((remaining - 0.75).abs() < f32::EPSILON);
+    /// assert!((remaining - 0.75).abs() < f64::EPSILON);
     /// ```
-    pub fn percentage_remaining(&self) -> f32 {
+    pub fn percentage_remaining(&self) -> f64 {
 
         if self.start_value == self.end_value {
             return -1.0;
         }
 
-        let start: f32 = self.start_value.as_f32();
-        let current: f32 = self.current_value.as_f32();
-        let end: f32 = self.end_value.as_f32();
+        let start: f64 = self.start_value.as_f64();
+        let current: f64 = self.current_value.as_f64();
+        let end: f64 = self.end_value.as_f64();
 
-        let range_reciprocal: f32 = 1.0 / (end - start);
+        let range_reciprocal: f64 = 1.0 / (end - start);
 
         (end - current) * range_reciprocal
     }

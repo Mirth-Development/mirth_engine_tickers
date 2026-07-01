@@ -1,6 +1,7 @@
 
 // Imports
 use bevy_app::prelude::*;
+use half::f16;
 use crate::types::*;
 use crate::systems::*;
 
@@ -32,21 +33,30 @@ impl Plugin for Tickers {
 
         // Ticker Systems
         #[cfg(feature = "ticker_systems")]
-        app.add_systems(First, tick_f32_tickers::<i8>);
+        app.add_systems(First, tick_tickers::<i8, f16>);
 
         #[cfg(feature = "ticker_systems")]
-        app.add_systems(First, tick_f32_tickers::<i16>);
+        app.add_systems(First, tick_tickers::<i16, f16>);
 
         #[cfg(feature = "ticker_systems")]
-        app.add_systems(First, tick_f32_tickers::<i32>);
+        app.add_systems(First, tick_tickers::<i32, f16>);
 
         #[cfg(feature = "ticker_systems")]
-        app.add_systems(First, tick_f64_tickers::<i8>);
+        app.add_systems(First, tick_tickers::<i8, f32>);
 
         #[cfg(feature = "ticker_systems")]
-        app.add_systems(First, tick_f64_tickers::<i16>);
+        app.add_systems(First, tick_tickers::<i16, f32>);
 
         #[cfg(feature = "ticker_systems")]
-        app.add_systems(First, tick_f64_tickers::<i32>);
+        app.add_systems(First, tick_tickers::<i32, f32>);
+
+        #[cfg(feature = "ticker_systems")]
+        app.add_systems(First, tick_tickers::<i8, f64>);
+
+        #[cfg(feature = "ticker_systems")]
+        app.add_systems(First, tick_tickers::<i16, f64>);
+
+        #[cfg(feature = "ticker_systems")]
+        app.add_systems(First, tick_tickers::<i32, f64>);
     }
 }
