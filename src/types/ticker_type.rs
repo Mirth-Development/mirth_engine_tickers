@@ -144,42 +144,6 @@ impl TickerPrecision for f64 {
 
 
 
-/// Provides tickers with a variety of different behaviors.  Here is each behavior explained:
-///
-/// - **`Looper`**
-///     - The ticker is **immutable** and will loop when current_value hits either start_value or end_value.  When a loop triggers, current_value is reset back to start_value.
-///
-///
-/// - **`MutLooper`**
-///     - The ticker is **mutable** and will loop when current_value hits either start_value or end_value.  When a loop triggers, current_value is reset back to start_value.
-///
-///
-/// - **`Oneshot`**
-///     - The ticker is **immutable** and will assign current_value to a boundary's value if current_value were to hit start_value or end_value; start and end values are the boundaries.
-///     - The ticker's stored_time is set to 0.0 when current_value hits end_value.  This ensures the time state is completely reset once it reaches the end.
-///
-///
-/// - **`MutOneshot`**
-///     - The ticker is **mutable** and will assign current_value to a boundary's value if current_value were to hit start_value or end_value; start and end values are the boundaries.
-///     - The ticker's stored_time is set to 0.0 when current_value hits end_value.  This ensures the time state is completely reset once it reaches the end.
-///
-///
-/// - **`Freezing`**
-///     - The ticker begins **mutable**, but it will become **immutable** once current_value hits end_value.
-///     - The ticker's stored_time is set to 0.0 when current_value hits end_value.  This ensures the time state is completely reset once it reaches the end.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "ticker_serialize", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "ticker_reflect", derive(Reflect), reflect(Clone, PartialEq))]
-pub enum TickerBehaviors {
-    Looper,
-    MutLooper,
-    Oneshot,
-    MutOneshot,
-    Freezing,
-}
-
-
-
 /// A trait for handling conversions into the ticker's precision type `P`.
 ///
 /// #### Why Is This Trait Necessary?
@@ -228,6 +192,42 @@ impl TickerFloatBridge<f32> for f16 {
 impl TickerFloatBridge<f64> for f16 {
     #[inline]
     fn to_precision(self) -> f64 { self.to_f64() }
+}
+
+
+
+/// Provides tickers with a variety of different behaviors.  Here is each behavior explained:
+///
+/// - **`Looper`**
+///     - The ticker is **immutable** and will loop when current_value hits either start_value or end_value.  When a loop triggers, current_value is reset back to start_value.
+///
+///
+/// - **`MutLooper`**
+///     - The ticker is **mutable** and will loop when current_value hits either start_value or end_value.  When a loop triggers, current_value is reset back to start_value.
+///
+///
+/// - **`Oneshot`**
+///     - The ticker is **immutable** and will assign current_value to a boundary's value if current_value were to hit start_value or end_value; start and end values are the boundaries.
+///     - The ticker's stored_time is set to 0.0 when current_value hits end_value.  This ensures the time state is completely reset once it reaches the end.
+///
+///
+/// - **`MutOneshot`**
+///     - The ticker is **mutable** and will assign current_value to a boundary's value if current_value were to hit start_value or end_value; start and end values are the boundaries.
+///     - The ticker's stored_time is set to 0.0 when current_value hits end_value.  This ensures the time state is completely reset once it reaches the end.
+///
+///
+/// - **`Freezing`**
+///     - The ticker begins **mutable**, but it will become **immutable** once current_value hits end_value.
+///     - The ticker's stored_time is set to 0.0 when current_value hits end_value.  This ensures the time state is completely reset once it reaches the end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "ticker_serialize", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(feature = "ticker_reflect", derive(Reflect), reflect(Clone, PartialEq))]
+pub enum TickerBehaviors {
+    Looper,
+    MutLooper,
+    Oneshot,
+    MutOneshot,
+    Freezing,
 }
 
 
@@ -305,8 +305,6 @@ impl TickerFloatBridge<f64> for f16 {
 /// - **`behavior`**
 ///     - Dictates the type of behavior a ticker is currently set to.
 ///     - Can be used to stop a ticker from looping, or to start a ticker to loop.
-///     - Can be used to change the mutability of a ticker.
-///     - Can be manipulated through a setter method if the ticker is mutable **or** immutable.
 ///
 /// ---
 ///
@@ -338,11 +336,13 @@ impl TickerFloatBridge<f64> for f16 {
 ///
 /// #### What Exactly is Changeable in Tickers?
 /// - **`Ticker is Mutable`**
-///     - Every field besides stored_time can be manipulated directly.  stored_time can be changed indirectly through the .hard_reset() method.
+///     - Every field besides stored_time can be manipulated directly.
+///     - stored_time can be changed indirectly through the .hard_reset() method.
 /// - **`Ticker is Immutable`**
-///     - The only field that can be changed is behavior; this does mean that you can flip immutable tickers to mutable ones.
+///     - No fields can be changed directly or indirectly.
 /// - **`Ticker is Mutable or Immutable`**
 ///     - current_value and stored_time will be changed if a ticker is ticking.  How and when these fields change is based on the ticker's boolean fields, what behavior the ticker is set to, and when .tick() gets called.
+///     - Do not regard current_value and stored_time's change from .tick() as a factor of mutability.  Tickers are purposed to tick, hence the changing of such fields inside ticking should ALWAYS be expected.
 ///
 /// ---
 ///
@@ -884,6 +884,49 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
             behavior:                   TickerBehaviors::Freezing,
         }
     }
+
+    /// Creates a copy of the passed ticker.
+    pub fn new_copy(
+        ticker: Ticker<V, P>,
+    ) -> Self {
+        Self {
+            start_value:                ticker.start_value(),
+            current_value:              ticker.start_value(),
+            end_value:                  ticker.start_value(),
+            time_interval:              ticker.time_interval(),
+            stored_time:                ticker.stored_time(),
+            is_paused:                  ticker.is_paused(),
+            is_ticking_up:              ticker.is_ticking_up(),
+            is_handling_time_spikes:    ticker.is_handling_time_spikes(),
+            behavior:                   ticker.behavior(),
+        }
+    }
+
+    /// Creates a copy of the passed ticker with the only field change being the behavior that will
+    /// be set to the TickerBehavior type that is passed in.
+    ///
+    /// #### What's The Point of This Constructor?
+    /// Besides being able to replicate a ticker's current values with a new behavior, the main usage
+    /// is that this constructor can safely be used to change immutable tickers to mutable ones.  You
+    /// can use this to copy an immutable ticker into a mutable one, and then replace the immutable
+    /// ticker with the mutable copy - preserves values and manages the mutability switch with a separate
+    /// ticker instance (the copy).
+    pub fn new_copy_with_behavior_change(
+        ticker: Ticker<V, P>,
+        ticker_behavior: TickerBehaviors,
+    ) -> Self {
+        Self {
+            start_value:                ticker.start_value(),
+            current_value:              ticker.start_value(),
+            end_value:                  ticker.start_value(),
+            time_interval:              ticker.time_interval(),
+            stored_time:                ticker.stored_time(),
+            is_paused:                  ticker.is_paused(),
+            is_ticking_up:              ticker.is_ticking_up(),
+            is_handling_time_spikes:    ticker.is_handling_time_spikes(),
+            behavior:                   ticker_behavior,
+        }
+    }
     // ######################################################################################## //
 
 
@@ -1267,9 +1310,9 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
 
     /// Switches the behavior of a ticker to the passed TickerBehavior type.
     ///
-    /// #### Important Aspects of This Setter
-    /// - Can be used to switch the mutability of a Ticker.
-    /// - Can be used to turn on/off the looping behavior of a Ticker.
+    /// #### Does This Work For Tickers With Immutable Behavior?
+    /// No.  Use the `new_copy_with_behavior_change` constructor to simulate changing immutable behavior
+    /// to mutable behavior.  The mutable copy can be used to substitute the immutable original.
     ///
     /// #### Example
     /// ```
@@ -1281,7 +1324,9 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
     /// ```
     #[inline]
     pub fn set_behavior(&mut self, new_behavior: TickerBehaviors) {
-        self.behavior = new_behavior;
+        if self.is_mutable() {
+            self.behavior = new_behavior;
+        }
     }
     // ######################################################################################## //
 
