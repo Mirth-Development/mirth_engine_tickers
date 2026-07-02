@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+      <meta charset="UTF-8">
+      <title>Tickers</title>
+      <link rel="stylesheet" href="readme.css">
+    </head>
+
+
+
+    <body>
+
+        <!-- ============================================================ -->
+        <!-- INTRODUCTION                                                 -->
+        <!-- ============================================================ -->
+        <div class="heading_section">
+            <h1>TICKERS</h1>
+            <p>Text</p>
+        </div>
+
+
+        <!-- ============================================================ -->
+        <!-- HOW TO USE THE PACKAGE                                       -->
+        <!-- ============================================================ -->
+        <div class="heading_section">
+          <h2>How To Use The Package?</h2>
+
+          <!-- The Recommended Way -->
+          <div class="subheading_section">
+              <h3>The Recommended Way</h3>
+              <ol>
+                  <li>Add the package to your project.
+                    <pre><code>cargo add mirth_engine_tickers</code></pre>
+                  </li>
+                  <li>Add <code>.add_plugin(Tickers{})</code> to your Bevy app.</li>
+                  <li>You can now make use of the datatypes that this package offers.</li>
+              </ol>
+          </div>
+
+          <!-- The "I Choose Features" Way -->
+          <div class="subheading_section">
+              <h3>The <i>"I Choose Features"</i> Way</h3>
+              <ol>
+                  <li>Add the package to your project with the default features disabled, then explicitly choose which features you want.
+                      <ul>
+                          <li><code>ticker_reflect</code> : Will cause all ticker types to reflect. Will add the bevy_reflect dependency and allow for the Tickers plugin to be usable.</li>
+                          <li><code>ticker_systems</code> : Will turn on all systems for every ticker type. Will add the bevy_time dependency and allow for the Tickers plugin to be usable.</li>
+                          <li>
+                              <code>ticker_serialize</code> : Will make it so that ticker types can be serialized and deserialized. Will enable ticker_reflect, add the serde dependency, and allow for the Tickers plugin to be usable.
+                              <pre><code>cargo add mirth_engine_tickers --no-default-features --features ticker_reflect, ticker_systems, ticker_serialize</code></pre>
+                          </li>
+                      </ul>
+                  </li>
+                  <li>If you added any of the features, add <code>.add_plugin(Tickers{})</code> to your Bevy app.</li>
+                  <li>You can now make use of the datatypes that this package offers.</li>
+              </ol>
+          </div>
+
+          <!-- The "I Will Do Everything Myself" Way -->
+          <div class="subheading_section">
+              <h3>The <i>"I Will Do Everything Myself"</i> Way</h3>
+              <ol>
+                  <li>Add the package to your project with the default features disabled.
+                      <pre><code>cargo add mirth_engine_tickers --no-default-features</code></pre>
+                  </li>
+                  <li>You can now make use of the datatypes that this package offers, but you will need to create ticking systems, reflection registrations, and serialization capability yourself.</li>
+              </ol>
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- WHAT ARE THE DATATYPES THIS PACKAGE OFFERS?                  -->
+        <!-- ============================================================ -->
+        <div class="heading_section">
+          <h2>What Are The Datatypes This Package Offers?</h2>
+
+            <ul>
+
+              <!-- Tickers Plugin -->
+              <li>
+                  <code>Tickers</code>
+                  <ul>
+                      <li>A Bevy plugin used to activate ticker systems and reflections for ticker types.</li>
+                      <li>Use <code>.add_plugin(Tickers{})</code> inside a Bevy app to enable ticker systems and reflections.</li>
+                  </ul>
+              </li>
+
+              <!-- Ticker Class -->
+              <li>
+                  <code>Ticker</code>
+                  <ul>
+                      <li>A class used to track the time between events.</li>
+                      <li>Holds the following fields:
+                          <ul>
+                              <li>start_value</li>
+                              <li>current_value</li>
+                              <li>end_value</li>
+                              <li>time_interval</li>
+                              <li>is_paused</li>
+                              <li>is_ticking_up</li>
+                              <li>is_handling_time_spikes</li>
+                              <li>behavior</li>
+                          </ul>
+                      </li>
+
+                      <!-- Types That Support Ticker -->
+                      <li>Is supported by the following types:
+                          <ul>
+
+                              <!-- TickerBehaviors -->
+                              <li>
+                                  <code>TickerBehaviors</code>
+                                  <ul>
+                                      <li>An enum that establishes the different types of behavior a <code>Ticker</code> can use.
+                                          <ul>
+                                              <li>Supports Looper, MutLooper, Oneshot, MutOneshot, and Freezing behaviors.</li>
+                                          </ul>
+                                      </li>
+                                  </ul>
+                              </li>
+
+                              <!-- TickerValue -->
+                              <li>
+                                  <code>TickerValue</code>
+                                  <ul>
+                                      <li>A trait for implementing a generic to define integer primitives a <code>Ticker</code>can potentially store for its boundary values and current value.
+                                          <ul>
+                                              <li>Supports i8, i16, and i32.</li>
+                                          </ul>
+                                      </li>
+                                  </ul>
+                              </li>
+
+                              <!-- TickerPrecision -->
+                              <li>
+                                  <code>TickerPrecision</code>
+                                  <ul>
+                                      <li>A trait for implementing a generic to define float types a <code>Ticker</code> can potentially use for its precision in tracking time.
+                                          <ul>
+                                              <li>Supports f16, f32, and f64.</li>
+                                          </ul>
+                                      </li>
+                                  </ul>
+                              </li>
+
+                              <!-- TickerFloatBridge -->
+                              <li>
+                                  <code>TickerFloatBridge</code>
+                                  <ul>
+                                      <li>A trait which grants the ability for f16, f32, and f64 to be passed in for the float fields of a <code>Ticker</code> constructor, no matter the precision a ticker is set to.
+                                          <ul>
+                                              <li>Eases usage of <code>Ticker</code> constructor methods.</li>
+                                          </ul>
+                                      </li>
+                                  </ul>
+                              </li>
+
+                          </ul>
+                      </li>
+                  </ul>
+              </li>
+            </ul>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- WHAT CAN I DO WITH THE TICKER CLASS?                         -->
+        <!-- ============================================================ -->
+        <div class="heading_section">
+            <h2>What Can I Do With The <code>Ticker</code> Class?</h2>
+            <p>All the following methods are available to you:</p>
+            <ul>
+                <li>INSERT_DISPLAY_TEXT_HERE</li>
+            </ul>
+        </div>
+    </body>
+</html>
