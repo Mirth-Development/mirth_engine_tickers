@@ -17,7 +17,7 @@ fn main() {
         // Change the calculation to w/e you want for testing.
         .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(1.0 / 60.0)))
         .add_plugins(TimePlugin)
-        .add_plugins(Tickers{})
+        .add_plugins(TickersPlugin{})
 
         // Comment this add_system line to prevent the master ticker from spawning.
         .add_systems(Startup, spawn_custom_ticker)

@@ -2,6 +2,8 @@
 * {
     padding: 0;
     margin: 0 auto;
+    font-style: normal;
+    font-weight: normal;
 }
 
 /* ================================================================ */
@@ -9,10 +11,11 @@
 /* ================================================================ */
 body {
     background-color: #000000;
-    color: #FFE0E0;
+    color: #ffbfbf;
     font-family: Spectral, sans-serif;
     line-height: 1.5;
     max-width: 900px;
+    padding: 2rem;
 }
 
 
@@ -20,111 +23,124 @@ body {
 /* ================================================================ */
 /* HEADINGS                                                         */
 /* ================================================================ */
-h1, h2, h3, h4, h5, h6, .method_header, .datatype_header {
+#title,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.code_header {
     text-align: center;
     margin-bottom: 1rem;
+}
+
+#title {
+    color: #fffcdd;
+    font-size: 4rem;
+    font-weight: bold;
     font-family: Cinzel, sans-serif;
 }
 
 h1 {
-    color: #EAB308;
-    font-size: 3rem;
+    color: #FFBE6F;
+    font-size: 2.25rem;
+    font-weight: bold;
+    font-family: Cinzel, sans-serif;
 }
 
 h2 {
-    color: #FFBE6F;
-    font-size: 2rem;
+    color: #b6a431;
+    font-size: 1.75rem;
+    font-weight: bold;
+    font-family: Cinzel, sans-serif;
 }
 
 h3 {
-    color: #e1703c;
+    color: #ff8b2a;
     font-size: 1.5rem;
+    font-weight: bold;
+    font-family: Cinzel, sans-serif;
 }
 
 h4 {
-    color: #FFFFFF;
+    color: #bdc37d;
     font-size: 1.25rem;
+    font-weight: bold;
+    font-family: Spectral, sans-serif;
 }
 
-.datatype_header {
+h5 {
+    color: #ffffff;
+    font-size: 1rem;
     font-weight: bold;
-    color: #d8ad00;
-    background-color: #2b2b2b;
-    padding: 0.15rem 0.35rem;
-    border-radius: 5px;
-    font-family: monospace;
-    font-size: 0.9rem;
+    font-family: Spectral, sans-serif;
 }
 
-.method_header {
-    font-weight: bold;
-    color: #d8ad00;
-    background-color: #2b2b2b;
-    padding: 0.15rem 0.35rem;
-    border-radius: 5px;
-    font-family: monospace;
-    font-size: 0.9rem;
-}
+
 
 /* ================================================================ */
 /* TEXT                                                             */
 /* ================================================================ */
-.datatype_text {
+p {
     margin-bottom: 1rem;
 }
-.datatype_text:last-child {
+p:last-child {
     margin-bottom: 0;
 }
 
-.method_text {
-    margin-bottom: 1rem;
-}
-.method_text:last-child {
-    margin-bottom: 0;
-}
+
 
 
 /* ================================================================ */
 /* BLOCKS (Used to group headings with their related content.)      */
 /* ================================================================ */
+
+.block_1:last-child,
+.block_2:last-child,
+.block_3:last-child,
+.block_4:last-child,
+.block_5:last-child {
+    margin-bottom: 0;
+}
+
 .block_1 {
-    background-color: #0e0e0e;
-    margin: 2rem;
-    padding: 1rem;
+    background-color: #1b1a1a;
+    margin: 3rem;
+    padding: 2rem;
     border-radius: 3px;
 }
 
 .block_2 {
-    background-color: #090909;
+    background-color: #000000;
     margin-bottom: 1.5rem;
-    padding: 1.5rem;
-    border: 2px groove #231e1e;
-    border-radius: 5px;
-}
-.block_2:last-child {
-    margin: 0;
+    border: 1px solid #3a3a3a;
+    padding: 2rem;
 }
 
 .block_3 {
-    background-color: #100000;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    border: 1px inset #3e3e3e;
-    border-radius: 1px;
-}
-.block_3:last-child {
-    margin: 0;
+    background-color: #202020;
+    margin-bottom: 2rem;
+    border: 1px solid #272727;
+    padding: 1.5rem;
+    border-radius: 5px;
 }
 
 .block_4 {
-    background-color: #3e3e3e;
+    background-color: #0c0c0c;
+    margin-bottom: 1.5rem;
+    border: 3px solid #000000;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.block_5 {
+    background-color: #000000;
     margin-bottom: 1rem;
-    padding: 1rem;
-    border-radius: 10px;
+    border: 1px solid #3a3a3a;
+    padding: 1.5rem;
 }
-.block_4:last-child {
-    margin: 0;
-}
+
 
 
 
@@ -132,8 +148,8 @@ h4 {
 /* CODE + COMMAND BLOCKS                                            */
 /* ================================================================ */
 code {
-    background-color: #2b2b2b;
-    color: #faa138;
+    background-color: #291616;
+    color: #c3b700;
     padding: 0.05rem 0.35rem;
     border-radius: 4px;
     font-family: monospace;
@@ -141,16 +157,12 @@ code {
 }
 
 pre {
-    background-color: #2b2b2b;
+    background-color: #291616;
     padding: 0.5rem;
     border-radius: 6px;
     overflow-x: auto;
-}
-
-/* Avoid double-styling code blocks nested inside <pre> */
-pre code {
-    background: none;
-    padding: 0;
+    margin-bottom: 0.5rem;
+    margin-top: 0.5rem;
 }
 
 
@@ -189,26 +201,26 @@ ol li::marker {
 ul > li::marker {
     content: "■ ";
     font-size: 1.2rem;
-    color: #ba724b;
+    color: #fffcdd;
 }
 
 /* Tier 2 Unordered List Icon*/
 ul > li > ul > li::marker {
     content: "▼  ";
     font-size: 0.75rem;
-    color: #ffa879;
+    color: #ffd49e;
 }
 
 /* Tier 3 Unordered List Icon*/
 ul > li > ul > li > ul > li::marker {
     content: "●  ";
     font-size: 0.8rem;
-    color: #f8ff47;
+    color: #f69747;
 }
 
 /* Tier 4 Unordered List Icon*/
 ul > li > ul > li > ul > li > ul > li::marker {
     content: "- ";
     font-size: 1rem;
-    color: #ffffff;
+    color: #fd6722;
 }

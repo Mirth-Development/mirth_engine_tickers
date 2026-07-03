@@ -1039,6 +1039,22 @@ impl<V: TickerValue, P: TickerPrecision> Ticker<V, P> {
         self.is_paused
     }
 
+    /// Returns true if the ticker is unpaused, false otherwise.
+    ///
+    /// #### Example
+    /// ```
+    /// use mirth_engine_tickers::Ticker;
+    ///
+    /// let mut ticker = Ticker::<i32, f32>::new_mut_looper_custom(0, 0, 10, 1.0, true, true);
+    /// assert!(ticker.is_unpaused());
+    /// ticker.pause();
+    /// assert!(!ticker.is_unpaused());
+    /// ```
+    #[inline]
+    pub fn is_unpaused(&self) -> bool {
+        !self.is_paused
+    }
+
     /// Returns true if a ticker is set to tick its `current_value` up, false otherwise.
     ///
     /// #### Example
