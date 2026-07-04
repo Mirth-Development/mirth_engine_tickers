@@ -1,28 +1,75 @@
 
+/* ================================================================ */
+/* ANIMATIONS                                                       */
+/* ================================================================ */
+@keyframes pageFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes torchFlicker {
+    0%, 100% {
+        text-shadow: 0 0 4px rgba(255, 190, 111, 0.3), 0 0 12px rgba(255, 139, 42, 0.2);
+    }
+    30% {
+        text-shadow: 0 0 2px rgba(255, 190, 111, 0.15), 0 0 8px rgba(255, 139, 42, 0.1);
+    }
+    50% {
+        text-shadow: 0 0 5px rgba(255, 190, 111, 0.4), 0 0 15px rgba(255, 139, 42, 0.35);
+    }
+    80% {
+        text-shadow: 0 0 3px rgba(255, 190, 111, 0.2), 0 0 10px rgba(255, 139, 42, 0.15);
+    }
+}
+
+/* ================================================================ */
+/* GENERAL STUFF                                                    */
+/* ================================================================ */
+
+html {
+    scroll-behavior: smooth;
+}
+
 * {
     padding: 0;
     margin: 0 auto;
     box-sizing: border-box;
     color: #ffbfbf;
     font-family: Spectral, sans-serif;
-    font-style: normal;
-    font-weight: normal;
     line-height: 1.5;
+    font-size: clamp(1rem, 0.95rem + 0.5vw, 1.25rem); /* Clamped baseline body text */
 }
 
-/* ================================================================ */
-/* BODY                                                             */
-/* ================================================================ */
 body {
     background-color: #000000;
 }
 
-/* ================================================================ */
-/* PAGE CONTENT BOX                                                 */
-/* ================================================================ */
 #page_content {
-    margin-left: 500px;
-    padding: 2rem;
+    margin-left: clamp(300px, 30vw, 500px);
+    padding: clamp(1rem, 2vw, 3rem);
+    animation: pageFadeIn 1s ease-out forwards;
+}
+
+a {
+    color: #b5ae86;
+    font-size: clamp(0.9rem, 0.85rem + 0.3vw, 1.1rem);
+}
+a:hover {
+    color: #ae930f;
+}
+a:active {
+    transform: scale(0.9);
+}
+
+::selection {
+    background-color: #400429;
+    color: #aeae2f;
 }
 
 /* ================================================================ */
@@ -32,19 +79,19 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    width: 500px;
+    width: clamp(300px, 30vw, 500px);
     height: 100vh;
     overflow-y: auto;
     background-color: #1b1a1a;
     border-right: 1px solid #8e8e8e;
-    padding: 1rem;
+    padding: clamp(0.5rem, 1.5vw, 1.5rem);
 }
 
 #navigation_title {
     text-align: center;
     color: #fffcdd;
     font-family: Cinzel, sans-serif;
-    font-size: 2rem;
+    font-size: clamp(1.5rem, 1.3rem + 1vw, 2.5rem);
 }
 
 .nav_box_1,
@@ -54,6 +101,10 @@ body {
 .nav_box_5 {
     text-align: center;
     margin-bottom: 1rem;
+    width: 100%;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .nav_box_1:last-child,
@@ -70,8 +121,23 @@ body {
 .nav_box_4 a,
 .nav_box_5 a {
     text-decoration: none;
-    display: inline-block;
     margin-bottom: 0.5rem;
+    display: block;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    transition: color 0.25s ease, filter 0.25s ease, transform 0.25s ease;
+}
+
+.nav_box_1 a:hover,
+.nav_box_2 a:hover,
+.nav_box_3 a:hover,
+.nav_box_4 a:hover,
+.nav_box_5 a:hover {
+    color: #fffcdd;
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 1px #ff8b2a);
+    text-decoration: none;
 }
 
 .nav_box_1 a:last-child,
@@ -82,10 +148,6 @@ body {
     margin-bottom: 0;
 }
 
-#navigation a:hover {
-    color: #ff8b2a;
-    text-decoration: underline;
-}
 
 .nav_box_1 {
     background-color: #100f0f;
@@ -125,7 +187,7 @@ body {
 /* For 1st Level Headers */
 .nav_box_1 a {
     color: #FFBE6F;
-    font-size: 1.2rem;
+    font-size: clamp(1.1rem, 1rem + 0.4vw, 1.35rem);
     font-weight: bold;
     font-family: Cinzel, sans-serif;
 }
@@ -133,7 +195,7 @@ body {
 /* For 2nd Level Headers */
 .nav_box_2 a {
     color: #b6a431;
-    font-size: 1.15rem;
+    font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.25rem);
     font-weight: bold;
     font-family: Spectral, sans-serif;
 }
@@ -141,7 +203,7 @@ body {
 /* For 3rd Level Headers */
 .nav_box_3 a {
     color: #ff8b2a;
-    font-size: 1.08rem;
+    font-size: clamp(1rem, 0.9rem + 0.3vw, 1.15rem);
     font-weight: normal;
     font-family: Spectral, sans-serif;
 }
@@ -149,7 +211,7 @@ body {
 /* For 4th Level Headers */
 .nav_box_4 a {
     color: #bdc37d;
-    font-size: 1.05rem;
+    font-size: clamp(0.95rem, 0.85rem + 0.3vw, 1.1rem);
     font-weight: normal;
     font-family: Spectral, sans-serif;
 }
@@ -157,11 +219,10 @@ body {
 /* For 5th Level Headers */
 .nav_box_5 a {
     color: #ffffff;
-    font-size: 1rem;
+    font-size: clamp(0.9rem, 0.8rem + 0.3vw, 1.05rem);
     font-weight: normal;
     font-family: Spectral, sans-serif;
 }
-
 
 /* ================================================================ */
 /* HEADINGS                                                         */
@@ -180,46 +241,46 @@ h6,
 
 #title {
     color: #fffcdd;
-    font-size: 4rem;
+    font-size: clamp(2.5rem, 1.5rem + 4vw, 4.5rem);
     font-weight: bold;
     font-family: Cinzel, sans-serif;
+    animation: torchFlicker 3s infinite alternate ease-in-out;
 }
 
 h1 {
     color: #FFBE6F;
-    font-size: 2.25rem;
+    font-size: clamp(1.75rem, 1.25rem + 2vw, 2.75rem);
     font-weight: bold;
     font-family: Cinzel, sans-serif;
 }
 
 h2 {
     color: #b6a431;
-    font-size: 1.75rem;
+    font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2.1rem);
     font-weight: bold;
     font-family: Cinzel, sans-serif;
 }
 
 h3 {
     color: #ff8b2a;
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 1rem + 1vw, 1.75rem);
     font-weight: bold;
     font-family: Cinzel, sans-serif;
 }
 
 h4 {
     color: #bdc37d;
-    font-size: 1.25rem;
+    font-size: clamp(1.1rem, 0.95rem + 0.6vw, 1.45rem);
     font-weight: bold;
     font-family: Spectral, sans-serif;
 }
 
 h5 {
     color: #ffffff;
-    font-size: 1rem;
+    font-size: clamp(1rem, 0.9rem + 0.4vw, 1.2rem);
     font-weight: bold;
     font-family: Spectral, sans-serif;
 }
-
 
 
 /* ================================================================ */
@@ -233,11 +294,13 @@ p:last-child {
 }
 
 
-
-
 /* ================================================================ */
 /* BLOCKS (Used to group headings with their related content.)      */
 /* ================================================================ */
+
+.block_1, .block_2, .block_3, .block_4, .block_5 {
+
+}
 
 .block_1:last-child,
 .block_2:last-child,
@@ -249,7 +312,7 @@ p:last-child {
 
 .block_1 {
     background-color: #1b1a1a;
-    margin: 3rem;
+    margin-bottom: 3rem;
     padding: 2rem;
     border-radius: 3px;
 }
@@ -285,8 +348,6 @@ p:last-child {
 }
 
 
-
-
 /* ================================================================ */
 /* CODE + COMMAND BLOCKS                                            */
 /* ================================================================ */
@@ -296,9 +357,14 @@ code {
     padding: 0.05rem 0.35rem;
     border-radius: 4px;
     font-family: monospace;
-    font-size: 0.7rem;
+    font-size: clamp(0.75rem, 0.7rem + 0.2vw, 0.95rem);
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
-
+code:hover {
+    background-color: #3e0f0f;
+    color: #fffcdd;
+    box-shadow: 0 0 8px rgba(195, 183, 0, 0.4);
+}
 pre {
     background-color: #291616;
     padding: 0.5rem;
@@ -306,9 +372,8 @@ pre {
     overflow-x: auto;
     margin-bottom: 0.5rem;
     margin-top: 0.5rem;
+    position: relative;
 }
-
-
 
 /* ================================================================ */
 /* LISTS                                                            */
@@ -343,27 +408,27 @@ ol li::marker {
 /* Tier 1 Unordered List Icon*/
 ul > li::marker {
     content: "■ ";
-    font-size: 1.2rem;
+    font-size: clamp(1rem, 0.9rem + 0.4vw, 1.3rem);
     color: #fffcdd;
 }
 
 /* Tier 2 Unordered List Icon*/
 ul > li > ul > li::marker {
     content: "▼  ";
-    font-size: 0.75rem;
+    font-size: clamp(0.65rem, 0.6rem + 0.1vw, 0.85rem);
     color: #ffd49e;
 }
 
 /* Tier 3 Unordered List Icon*/
 ul > li > ul > li > ul > li::marker {
     content: "●  ";
-    font-size: 0.8rem;
+    font-size: clamp(0.7rem, 0.65rem + 0.1vw, 0.9rem);
     color: #f69747;
 }
 
 /* Tier 4 Unordered List Icon*/
 ul > li > ul > li > ul > li > ul > li::marker {
     content: "- ";
-    font-size: 1rem;
+    font-size: clamp(0.85rem, 0.8rem + 0.2vw, 1.1rem);
     color: #fd6722;
 }

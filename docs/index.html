@@ -14,9 +14,6 @@
         <!-- ============================================================ -->
         <!-- NAVIGATION                                                   -->
         <!-- ============================================================ -->
-        <!-- ============================================================ -->
-        <!-- NAVIGATION                                                   -->
-        <!-- ============================================================ -->
         <nav id="navigation">
             <h1 id="navigation_title">Table of Contents</h1>
 
@@ -200,10 +197,10 @@
             <!-- ============================================================ -->
             <!-- INTRODUCTION                                                 -->
             <!-- ============================================================ -->
-            <p id="title">TICKERS</p>
-            <p>Text</p>
-            <p>Text</p>
-            <p>Text</p>
+            <p id="title">Tickers README</p>
+            <p><b style="color: #ffeeee">WARNING : <em style="color: #f1f198">I am new to Bevy.  I can be wrong, and I encourage you to do your own research before trusting my words at face-value.</em></b></p>
+            <p>Tickers is a package for Bevy projects, specifically for scenarios where you need a type to handle time beyond what Bevy Timers are capable of.  I created this package because Timers inside Bevy can't handle negative values without extra implementation, only support mutable behaviors, don't offer memory management, and aren't purposed for easing the creation of time-based mechanics.  But the Tickers in this package do support the aforementioned features, and a bit more.  If you feel these features would benefit you, then I encourage you to read the section <a href="#what-are-the-datatypes-this-package-offers">"What are the Datatypes This Package Offers?"</a> and explore the <a href="https://docs.rs/mirth_engine_tickers" target="_blank" rel="noopener noreferrer">docs.rs page</a>.</p>
+            <p>Fair warning, the <a href="https://docs.rs/mirth_engine_tickers" target="_blank" rel="noopener noreferrer">docs.rs page</a> will ultimately contain more information than this README.  But that's because it's purposed to help explain things while actively coding with tickers.  The README is more organized and purposed for summary, all at the cost of less explanation.</p>
 
             <!-- ============================================================ -->
             <!-- HOW TO USE THE PACKAGE                                       -->
@@ -283,6 +280,19 @@
                         <li><code>behavior</code></li>
                     </ul>
 
+                    <p>Has the following type declarations:</p>
+                    <ul>
+                        <li><code>Ticker&lt;i8, f16&gt;</code> : 51+ Bits</li>
+                        <li><code>Ticker&lt;i16, f16&gt;</code> : 83+ Bits</li>
+                        <li><code>Ticker&lt;i32, f16&gt;</code> : 131+ Bits</li>
+                        <li><code>Ticker&lt;i8, f32&gt;</code> : 91+ Bits</li>
+                        <li><code>Ticker&lt;i16, f32&gt;</code> : 115+ Bits</li>
+                        <li><code>Ticker&lt;i32, f32&gt;</code> : 163+ Bits</li>
+                        <li><code>Ticker&lt;i8, f64&gt;</code> : 155+ Bits</li>
+                        <li><code>Ticker&lt;i16, f64&gt;</code> : 179+ Bits</li>
+                        <li><code>Ticker&lt;i32, f64&gt;</code> : 227+ Bits</li>
+                    </ul>
+                    <p>The "+" in the bit count is to recognize that the behavior field holds an enum value, and I have no idea how many bits an enum declaration represents.</p>
 
                     <!-- Ticker Traits -->
                     <div class="block_3">
@@ -299,14 +309,20 @@
                         <div class="block_4">
                             <h4 id="tickerprecision">TickerPrecision</h4>
                             <p>A trait for implementing the <code>P</code> generic to define float types a <code>Ticker</code> can use for its precision in tracking time, <code>P</code> impacts the <code>time_interval</code> and <code>stored_time</code> fields.</p>
-                            <ul><li><code>P</code> supports f16 (stable from half crate), f32, and f64.</li></ul>
+                            <ul>
+                                <li><code>P</code> supports f16, f32, and f64.</li>
+                                <li>f16 support is coming from the crate named "half".  The f16 from this crate is <u>considered</u> stable and the crate has over 300,000,000+ pulls; I trust it, but do your own research.  From my understanding, due to how "half" has constructed their f16, an f16 value will jump up to being f32 (lossless conversion) if a device doesn't support f16 due to this crate.</li>
+                            </ul>
                         </div>
 
                         <!-- TickerFloatBridge -->
                         <div class="block_4">
                             <h4 id="tickerfloatbridge">TickerFloatBridge</h4>
                             <p>A trait for implementing the <code>F</code> generic which grants the ability for f16, f32, and f64 to be passed in for the float fields of a <code>Ticker</code> constructor, no matter the precision a ticker is set to.</p>
-                            <ul><li><code>F</code> supports f16 (stable from half crate), f32, and f64.</li></ul>
+                            <ul>
+                                <li><code>F</code> supports f16, f32, and f64.</li>
+                                <li>f16 support is coming from the crate named "half".  The f16 from this crate is <u>considered</u> stable and the crate has over 300,000,000+ pulls; I trust it, but do your own research.  From my understanding, due to how "half" has constructed their f16, an f16 value will jump up to being f32 (lossless conversion) if a device doesn't support f16 due to this crate.</li>
+                            </ul>
                         </div>
 
                     </div>
@@ -324,7 +340,7 @@
 
                                 <!-- Looper Behavior -->
                                 <li>
-                                    <code>Looper</code>
+                                    <b><code>Looper</code></b>
                                     <ul>
                                         <li>The ticker is <u>immutable</u> and will loop when <code>current_value</code> hits either <code>start_value</code> or <code>end_value</code>.  When a loop triggers, <code>current_value</code> is reset back to <code>start_value</code>.</li>
                                     </ul>
@@ -332,7 +348,7 @@
 
                                 <!-- MutLooper Behavior -->
                                 <li>
-                                    <code>MutLooper</code>
+                                    <b><code>MutLooper</code></b>
                                     <ul>
                                         <li>The ticker is <u>mutable</u> and will loop when <code>current_value</code> hits either <code>start_value</code> or <code>end_value</code>.  When a loop triggers, <code>current_value</code> is reset back to <code>start_value</code>.</li>
                                     </ul>
@@ -340,7 +356,7 @@
 
                                 <!-- Oneshot Behavior -->
                                 <li>
-                                    <code>Oneshot</code>
+                                    <b><code>Oneshot</code></b>
                                     <ul>
                                         <li>The ticker is <u>immutable</u> and will assign <code>current_value</code> to a boundary's value if <code>current_value</code> were to hit <code>start_value</code> or <code>end_value</code>; start and end values are the boundaries.</li>
                                         <li>The ticker's stored_time is set to 0.0 when <code>current_value</code> hits <code>end_value</code>.  This ensures the time state is completely reset once it reaches the end.</li>
@@ -349,7 +365,7 @@
 
                                 <!-- MutOneshot Behavior -->
                                 <li>
-                                    <code>MutOneshot</code>
+                                    <b><code>MutOneshot</code></b>
                                     <ul>
                                         <li>The ticker is <u>mutable</u> and will assign <code>current_value</code> to a boundary's value if <code>current_value</code> were to hit <code>start_value</code> or <code>end_value</code>; start and end values are the boundaries.</li>
                                         <li>The ticker's stored_time is set to 0.0 when <code>current_value</code> hits <code>end_value</code>.  This ensures the time state is completely reset once it reaches the end.</li>
@@ -358,7 +374,7 @@
 
                                 <!-- Freezing Behavior -->
                                 <li>
-                                    <code>Freezing</code>
+                                    <b><code>Freezing</code></b>
                                     <ul>
                                         <li>The ticker begins <u>mutable</u>, but it will become <u>immutable</u> once <code>current_value</code> hits <code>end_value</code>.</li>
                                         <li>The ticker's stored_time is set to 0.0 when <code>current_value</code> hits <code>end_value</code>.  This ensures the time state is completely reset once it reaches the end.</li>
