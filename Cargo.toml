@@ -1,9 +1,9 @@
 
 [package]
-name = "mirth_engine_tickers"
-version = "0.0.3"
+name = "mirth_engine_counters"
+version = "0.0.1"
 edition = "2024"
-description = "A Bevy plugin with types (and their systems) purposed for tracking continously changing values over a given period of time."
+description = "A Bevy plugin with types (and their systems) purposed for making and tracking continously changing values."
 license = "MIT OR Apache-2.0"
 
 

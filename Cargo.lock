@@ -481,17 +481,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88904434abc2901f197fe8cc55f0445e7ded921dba5911dad2e2b39b48e663c4"
 
 [[package]]
-name = "mirth_engine_testing_tools"
-version = "0.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c83eaaf262a7a55b405c85208f2916ba3e6aff9e7de5e940fcfb19542ccbe96"
-dependencies = [
- "bevy_ecs",
-]
-
-[[package]]
-name = "mirth_engine_tickers"
-version = "0.0.3"
+name = "mirth_engine_counters"
+version = "0.0.1"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -500,6 +491,15 @@ dependencies = [
  "half",
  "mirth_engine_testing_tools",
  "serde",
+]
+
+[[package]]
+name = "mirth_engine_testing_tools"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c83eaaf262a7a55b405c85208f2916ba3e6aff9e7de5e940fcfb19542ccbe96"
+dependencies = [
+ "bevy_ecs",
 ]
 
 [[package]]
