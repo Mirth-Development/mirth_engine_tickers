@@ -11,7 +11,7 @@ fn main() {
     App::new()
         .add_plugins(CountersPlugin{})
 
-        .add_systems(Startup, spawn_custom_ticker)
+        .add_systems(Startup, spawn_custom_count)
 
         .add_systems(Update, print_count_information)
 
