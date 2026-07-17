@@ -21,6 +21,9 @@ Copy                    // CountValue types are safe to copy.
 + Sync                  // Needed for Bevy queries; also lets Counts be shared safely across threads.
 + 'static               // Needed for Bevy queries; also enforces that CountValue types own their data, with no borrowed lifetimes.
 {
+    ///
+    type Difference;
+
     /// Text
     const MIN: Self;
 
@@ -30,126 +33,455 @@ Copy                    // CountValue types are safe to copy.
     /// Text
     const IS_FLOAT: bool;
 
-    /// Text
-    fn absolute(self)                           -> Self;
+    ///
+    fn signed_difference(from: Self, to: Self) -> Self::Difference;
+
+    ///
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference;
 
     /// Text
-    fn sat_add(self, value: Self)               -> Self;
+    fn absolute(self) -> Self;
 
     /// Text
-    fn truncate(self)                           -> Self;
+    fn sat_add(self, value: Self) -> Self;
 
     /// Text
-    fn count_min(self, other: Self)             -> Self;
+    fn truncate(self) -> Self;
 
     /// Text
-    fn count_max(self, other: Self)             -> Self;
+    fn count_min(self, other: Self) -> Self;
 
     /// Text
-    fn count_clamp(self, min: Self, max: Self)  -> Self;
+    fn count_max(self, other: Self) -> Self;
 
     /// Text
-    fn is_nan(self)                             -> bool;
+    fn count_clamp(self, min: Self, max: Self) -> Self;
 
     /// Text
-    fn as_f64(self)                             -> f64;
+    fn is_nan(self) -> bool;
 
     /// Text
-    fn as_i8(self)                              -> i8;
+    fn as_f64(self) -> f64;
+
+    /// INT TO INT CASTING DOESN'T SATURATE, IT WRAPS.  MENTION THIS FOR UNSIGNED TYPES.
+    fn as_i8(self) -> i8;
 
     /// Text
-    fn as_i64(self)                             -> i64;
+    fn as_i64(self) -> i64;
 
     /// Text
-    fn from_f64(value: f64)                     -> Self;
+    fn from_f64(value: f64) -> Self;
 
-    /// INT TO INT CASTING DOESN'T SATURATE, IT WRAPS
-    fn from_i64(value: i64)                     -> Self;
+    /// INT TO INT CASTING DOESN'T SATURATE, IT WRAPS.  MENTION THIS FOR SIGNED AND UNSIGNED TYPES.
+    fn from_i64(value: i64) -> Self;
+}
+impl CountValue for u8 {
+    type Difference = i16;
+
+    const MIN: Self = u8::MIN;
+
+    const MAX: Self = u8::MAX;
+
+    const IS_FLOAT: bool = false;
+
+    fn signed_difference(from: Self, to: Self) -> Self::Difference
+    { (to as Self::Difference) - (from as Self::Difference) }
+
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference
+    { ((val_1 as Self::Difference) - (val_2 as Self::Difference)).abs() }
+
+    fn absolute(self) -> Self
+    { self }
+
+    fn sat_add(self, value: Self) -> Self
+    { self.saturating_add(value) }
+
+    fn truncate(self) -> Self
+    { self }
+
+    fn count_min(self, other: Self) -> Self
+    { self.min(other) }
+
+    fn count_max(self, other: Self) -> Self
+    { self.max(other) }
+
+    fn count_clamp(self, min: Self, max: Self) -> Self
+    { self.clamp(min, max) }
+
+    fn is_nan(self) -> bool
+    { false }
+
+    fn as_f64(self) -> f64
+    { self as f64 }
+
+    fn as_i8(self) -> i8
+    { self.clamp(0, i8::MAX as u8) as i8 }
+
+    fn as_i64(self) -> i64
+    { self as i64 }
+
+    fn from_f64(value: f64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as f64, <Self as CountValue>::MAX as f64) as u8 }
+
+    fn from_i64(value: i64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as u8 }
+}
+impl CountValue for u16 {
+    type Difference = i32;
+
+    const MIN: Self = u16::MIN;
+
+    const MAX: Self = u16::MAX;
+
+    const IS_FLOAT: bool = false;
+
+    fn signed_difference(from: Self, to: Self) -> Self::Difference
+    { (to as Self::Difference) - (from as Self::Difference) }
+
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference
+    { ((val_1 as Self::Difference) - (val_2 as Self::Difference)).abs() }
+
+    fn absolute(self) -> Self
+    { self }
+
+    fn sat_add(self, value: Self) -> Self
+    { self.saturating_add(value) }
+
+    fn truncate(self) -> Self
+    { self }
+
+    fn count_min(self, other: Self) -> Self
+    { self.min(other) }
+
+    fn count_max(self, other: Self) -> Self
+    { self.max(other) }
+
+    fn count_clamp(self, min: Self, max: Self) -> Self
+    { self.clamp(min, max) }
+
+    fn is_nan(self) -> bool
+    { false }
+
+    fn as_f64(self) -> f64
+    { self as f64 }
+
+    fn as_i8(self) -> i8
+    { self.clamp(0, i8::MAX as u16) as i8 }
+
+    fn as_i64(self) -> i64
+    { self as i64 }
+
+    fn from_f64(value: f64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as f64, <Self as CountValue>::MAX as f64) as u16 }
+
+    fn from_i64(value: i64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as u16 }
+}
+impl CountValue for u32 {
+    type Difference = i64;
+
+    const MIN: Self = u32::MIN;
+
+    const MAX: Self = u32::MAX;
+
+    const IS_FLOAT: bool = false;
+
+    fn signed_difference(from: Self, to: Self) -> Self::Difference
+    { (to as Self::Difference) - (from as Self::Difference) }
+
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference
+    { ((val_1 as Self::Difference) - (val_2 as Self::Difference)).abs() }
+
+    fn absolute(self) -> Self
+    { self }
+
+    fn sat_add(self, value: Self) -> Self
+    { self.saturating_add(value) }
+
+    fn truncate(self) -> Self
+    { self }
+
+    fn count_min(self, other: Self) -> Self
+    { self.min(other) }
+
+    fn count_max(self, other: Self) -> Self
+    { self.max(other) }
+
+    fn count_clamp(self, min: Self, max: Self) -> Self
+    { self.clamp(min, max) }
+
+    fn is_nan(self) -> bool
+    { false }
+
+    fn as_f64(self) -> f64
+    { self as f64 }
+
+    fn as_i8(self) -> i8
+    { self.clamp(0, i8::MAX as u32) as i8 }
+
+    fn as_i64(self) -> i64
+    { self as i64 }
+
+    fn from_f64(value: f64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as f64, <Self as CountValue>::MAX as f64) as u32 }
+
+    fn from_i64(value: i64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as u32 }
 }
 impl CountValue for i8 {
-    const MIN: Self                             = i8::MIN + 1;
-    const MAX: Self                             = i8::MAX;
-    const IS_FLOAT: bool                        = false;
-    fn absolute(self)                           -> Self { self.abs() }
-    fn sat_add(self, value: Self)               -> Self { self.saturating_add(value) }
-    fn truncate(self)                          -> Self { self }
-    fn count_min(self, other: Self)             -> Self { self.min(other) }
-    fn count_max(self, other: Self)             -> Self { self.max(other) }
-    fn count_clamp(self, min: Self, max: Self)  -> Self { self.clamp(min, max) }
-    fn is_nan(self)                             -> bool { false }
-    fn as_f64(self)                             -> f64  { self as f64 }
-    fn as_i8(self)                              -> i8   { self }
-    fn as_i64(self)                             -> i64  { self as i64 }
-    fn from_f64(value: f64)                     -> Self { value as i8 }
-    fn from_i64(value: i64)                     -> Self { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as i8 }
+    type Difference = i16;
+
+    const MIN: Self = i8::MIN + 1;
+
+    const MAX: Self = i8::MAX;
+
+    const IS_FLOAT: bool = false;
+
+    fn signed_difference(from: Self, to: Self) -> Self::Difference
+    { (to as Self::Difference) - (from as Self::Difference) }
+
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference
+    { ((val_1 as Self::Difference) - (val_2 as Self::Difference)).abs() }
+
+    fn absolute(self) -> Self
+    { self.abs() }
+
+    fn sat_add(self, value: Self) -> Self
+    { self.saturating_add(value) }
+
+    fn truncate(self) -> Self
+    { self }
+
+    fn count_min(self, other: Self) -> Self
+    { self.min(other) }
+
+    fn count_max(self, other: Self) -> Self
+    { self.max(other) }
+
+    fn count_clamp(self, min: Self, max: Self) -> Self
+    { self.clamp(min, max) }
+
+    fn is_nan(self) -> bool
+    { false }
+
+    fn as_f64(self) -> f64
+    { self as f64 }
+
+    fn as_i8(self) -> i8
+    { self }
+
+    fn as_i64(self) -> i64
+    { self as i64 }
+
+    fn from_f64(value: f64) -> Self
+    { value as i8 }
+
+    fn from_i64(value: i64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as i8 }
 }
 impl CountValue for i16 {
-    const MIN: Self                             = i16::MIN + 1;
-    const MAX: Self                             = i16::MAX;
-    const IS_FLOAT: bool                        = false;
-    fn absolute(self)                           -> Self { self.abs() }
-    fn sat_add(self, value: Self)               -> Self { self.saturating_add(value) }
-    fn truncate(self)                          -> Self { self }
-    fn count_min(self, other: Self)             -> Self { self.min(other) }
-    fn count_max(self, other: Self)             -> Self { self.max(other) }
-    fn count_clamp(self, min: Self, max: Self)  -> Self { self.clamp(min, max) }
-    fn is_nan(self)                             -> bool { false }
-    fn as_f64(self)                             -> f64  { self as f64 }
-    fn as_i8(self)                              -> i8   { self as i8 }
-    fn as_i64(self)                             -> i64  { self as i64 }
-    fn from_f64(value: f64)                     -> Self { value as i16 }
-    fn from_i64(value: i64)                     -> Self { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as i16 }
+    type Difference = i32;
+
+    const MIN: Self = i16::MIN + 1;
+
+    const MAX: Self = i16::MAX;
+
+    const IS_FLOAT: bool = false;
+
+    fn signed_difference(from: Self, to: Self) -> Self::Difference
+    { (to as Self::Difference) - (from as Self::Difference) }
+
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference
+    { ((val_1 as Self::Difference) - (val_2 as Self::Difference)).abs() }
+
+    fn absolute(self) -> Self
+    { self.abs() }
+
+    fn sat_add(self, value: Self) -> Self
+    { self.saturating_add(value) }
+
+    fn truncate(self) -> Self
+    { self }
+
+    fn count_min(self, other: Self) -> Self
+    { self.min(other) }
+
+    fn count_max(self, other: Self) -> Self
+    { self.max(other) }
+
+    fn count_clamp(self, min: Self, max: Self) -> Self
+    { self.clamp(min, max) }
+
+    fn is_nan(self) -> bool
+    { false }
+
+    fn as_f64(self) -> f64
+    { self as f64 }
+
+    fn as_i8(self) -> i8
+    { self as i8 }
+
+    fn as_i64(self) -> i64
+    { self as i64 }
+
+    fn from_f64(value: f64) -> Self
+    { value as i16 }
+
+    fn from_i64(value: i64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as i16 }
 }
 impl CountValue for i32 {
-    const MIN: Self                             = i32::MIN + 1;
-    const MAX: Self                             = i32::MAX;
-    const IS_FLOAT: bool                        = false;
-    fn absolute(self)                           -> Self { self.abs() }
-    fn sat_add(self, value: Self)               -> Self { self.saturating_add(value) }
-    fn truncate(self)                          -> Self { self }
-    fn count_min(self, other: Self)             -> Self { self.min(other) }
-    fn count_max(self, other: Self)             -> Self { self.max(other) }
-    fn count_clamp(self, min: Self, max: Self)  -> Self { self.clamp(min, max) }
-    fn is_nan(self)                             -> bool { false }
-    fn as_f64(self)                             -> f64  { self as f64 }
-    fn as_i8(self)                              -> i8   { self as i8 }
-    fn as_i64(self)                             -> i64  { self as i64 }
-    fn from_f64(value: f64)                     -> Self { value as i32 }
-    fn from_i64(value: i64)                     -> Self { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as i32 }
+    type Difference = i64;
+
+    const MIN: Self = i32::MIN + 1;
+
+    const MAX: Self = i32::MAX;
+
+    const IS_FLOAT: bool = false;
+
+    fn signed_difference(from: Self, to: Self) -> Self::Difference
+    { (to as Self::Difference) - (from as Self::Difference) }
+
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference
+    { ((val_1 as Self::Difference) - (val_2 as Self::Difference)).abs() }
+
+    fn absolute(self) -> Self
+    { self.abs() }
+
+    fn sat_add(self, value: Self) -> Self
+    { self.saturating_add(value) }
+
+    fn truncate(self) -> Self
+    { self }
+
+    fn count_min(self, other: Self) -> Self
+    { self.min(other) }
+
+    fn count_max(self, other: Self) -> Self
+    { self.max(other) }
+
+    fn count_clamp(self, min: Self, max: Self) -> Self
+    { self.clamp(min, max) }
+
+    fn is_nan(self) -> bool
+    { false }
+
+    fn as_f64(self) -> f64
+    { self as f64 }
+
+    fn as_i8(self) -> i8
+    { self as i8 }
+
+    fn as_i64(self) -> i64
+    { self as i64 }
+
+    fn from_f64(value: f64) -> Self
+    { value as i32 }
+
+    fn from_i64(value: i64) -> Self
+    { value.clamp(<Self as CountValue>::MIN as i64, <Self as CountValue>::MAX as i64) as i32 }
 }
 impl CountValue for f16 {
-    const MIN: Self                             = f16::MIN;
-    const MAX: Self                             = f16::MAX;
-    const IS_FLOAT: bool                        = true;
-    fn absolute(self)                           -> Self { if self < f16::from_f32(0.0) { -self } else { self } }
-    fn sat_add(self, value: Self)               -> Self { (self + value).clamp(<Self as CountValue>::MIN, <Self as CountValue>::MAX) }
-    fn truncate(self)                          -> Self { f16::from_f32(self.to_f32().trunc()) }
-    fn count_min(self, other: Self)             -> Self { self.min(other) }
-    fn count_max(self, other: Self)             -> Self { self.max(other) }
-    fn count_clamp(self, min: Self, max: Self)  -> Self { self.clamp(min, max) }
-    fn is_nan(self)                             -> bool { self.is_nan() }
-    fn as_f64(self)                             -> f64  { self.to_f64() }
-    fn as_i8(self)                              -> i8   { self.to_f64() as i8 }
-    fn as_i64(self)                             -> i64  { self.to_f64() as i64 }
-    fn from_f64(value: f64)                     -> Self { f16::from_f64(value) }
-    fn from_i64(value: i64)                     -> Self { f16::from_f64(value as f64) }
+    type Difference = f32;
+
+    const MIN: Self = f16::MIN;
+
+    const MAX: Self = f16::MAX;
+
+    const IS_FLOAT: bool = true;
+
+    fn signed_difference(from: Self, to: Self) -> Self::Difference
+    { to.to_f32() - from.to_f32() }
+
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference
+    { (val_1.to_f32() - val_2.to_f32()).abs() }
+
+    fn absolute(self) -> Self
+    { if self < f16::from_f32(0.0) { -self } else { self } }
+
+    fn sat_add(self, value: Self) -> Self
+    { (self + value).clamp(<Self as CountValue>::MIN, <Self as CountValue>::MAX) }
+
+    fn truncate(self) -> Self
+    { f16::from_f32(self.to_f32().trunc()) }
+
+    fn count_min(self, other: Self) -> Self
+    { self.min(other) }
+
+    fn count_max(self, other: Self) -> Self
+    { self.max(other) }
+
+    fn count_clamp(self, min: Self, max: Self) -> Self
+    { self.clamp(min, max) }
+
+    fn is_nan(self) -> bool
+    { self.is_nan() }
+
+    fn as_f64(self) -> f64
+    { self.to_f64() }
+
+    fn as_i8(self) -> i8
+    { self.to_f64() as i8 }
+
+    fn as_i64(self) -> i64
+    { self.to_f64() as i64 }
+
+    fn from_f64(value: f64) -> Self
+    { f16::from_f64(value) }
+
+    fn from_i64(value: i64) -> Self
+    { f16::from_f64(value as f64) }
 }
 impl CountValue for f32 {
-    const MIN: Self                             = f32::MIN;
-    const MAX: Self                             = f32::MAX;
-    const IS_FLOAT: bool                        = true;
-    fn absolute(self)                           -> Self { self.abs() }
-    fn sat_add(self, value: Self)               -> Self { (self + value).clamp(<Self as CountValue>::MIN, <Self as CountValue>::MAX) }
-    fn truncate(self)                          -> Self { self.trunc() }
-    fn count_min(self, other: Self)             -> Self { self.min(other) }
-    fn count_max(self, other: Self)             -> Self { self.max(other) }
-    fn count_clamp(self, min: Self, max: Self)  -> Self { self.clamp(min, max) }
-    fn is_nan(self)                             -> bool { self.is_nan() }
-    fn as_f64(self)                             -> f64  { self as f64 }
-    fn as_i8(self)                              -> i8   { self as i8 }
-    fn as_i64(self)                             -> i64  { self as i64 }
-    fn from_f64(value: f64)                     -> Self { value as f32 }
-    fn from_i64(value: i64)                     -> Self { value as f32 }
+    type Difference = f64;
+
+    const MIN: Self = f32::MIN;
+
+    const MAX: Self = f32::MAX;
+
+    const IS_FLOAT: bool = true;
+
+    fn signed_difference(from: Self, to: Self) -> Self::Difference
+    { (to as Self::Difference) - (from as Self::Difference) }
+
+    fn absolute_difference(val_1: Self, val_2: Self) -> Self::Difference
+    { ((val_1 as Self::Difference) - (val_2 as Self::Difference)).abs() }
+
+    fn absolute(self) -> Self
+    { self.abs() }
+
+    fn sat_add(self, value: Self) -> Self
+    { (self + value).clamp(<Self as CountValue>::MIN, <Self as CountValue>::MAX) }
+
+    fn truncate(self) -> Self
+    { self.trunc() }
+
+    fn count_min(self, other: Self) -> Self
+    { self.min(other) }
+
+    fn count_max(self, other: Self) -> Self
+    { self.max(other) }
+
+    fn count_clamp(self, min: Self, max: Self) -> Self
+    { self.clamp(min, max) }
+
+    fn is_nan(self) -> bool
+    { self.is_nan() }
+
+    fn as_f64(self) -> f64
+    { self as f64 }
+
+    fn as_i8(self) -> i8
+    { self as i8 }
+
+    fn as_i64(self) -> i64
+    { self as i64 }
+
+    fn from_f64(value: f64) -> Self
+    { value as f32 }
+
+    fn from_i64(value: i64) -> Self
+    { value as f32 }
 }
 
 
@@ -598,25 +930,25 @@ impl<V: CountValue> Count<V> {
     /// - **Positive Result**: `to_marker` sits to the right of (greater than) `from_marker`.
     /// - **Negative Result**: `to_marker` sits to the left of (less than) `from_marker`.
     /// - **Zero Result**: The two markers currently hold equal values.
-    pub fn get_signed_difference<I64orF64: CountDiffCaster>(
+    pub fn get_signed_difference(
         &self,
         from_marker: CountMarkers,
         to_marker: CountMarkers,
-    ) -> I64orF64 {
-        let from_value: f64 = self.marker_value(from_marker).as_f64();
-        let to_value: f64 = self.marker_value(to_marker).as_f64();
-        CountDiffCaster::from_f64(to_value - from_value)
+    ) -> V::Difference {
+        let from_value: V = self.marker_value(from_marker);
+        let to_value: V = self.marker_value(to_marker);
+        V::signed_difference(to_value, from_value)
     }
 
     /// WILL ALWAYS RETURN A POSITIVE VALUE, THIS DOES INCLUDE THE POSSIBILITY OF 0.
-    pub fn get_absolute_difference<I64orF64: CountDiffCaster>(
+    pub fn get_absolute_difference(
         &self,
         marker_1: CountMarkers,
         marker_2: CountMarkers,
-    ) -> I64orF64 {
-        let value_1: f64 = self.marker_value(marker_1).as_f64();
-        let value_2: f64 = self.marker_value(marker_2).as_f64();
-        CountDiffCaster::from_f64((value_1 - value_2).abs())
+    ) -> V::Difference {
+        let value_1: V = self.marker_value(marker_1);
+        let value_2: V = self.marker_value(marker_2);
+        V::absolute_difference(value_1, value_2)
     }
 
     /// REMEMBER TO MENTION THAT STARTING_MARKER AND ENDING_MARKER CAN BE FLIPPED TO OBTAIN THE INVERSE PERCENTAGE!
@@ -679,6 +1011,7 @@ impl<V: CountValue> Count<V> {
 
     // #################################### HELPER METHODS ###################################### //
     ///
+    #[inline]
     pub fn print_information(&self) {
         println!("ANCHOR : {}", self.anchor);
         println!("CURRENT_VALUE : {}", self.current_value);
@@ -693,6 +1026,7 @@ impl<V: CountValue> Count<V> {
     /// TECHNICALLY NOT NECESSARY FOR PUBLIC USAGE, BUT MAYBE IT COULD BE USED BY OTHERS?
     /// THIS IS USED FOR DIFFERENCE AND PERCENTAGE METHODS SO THAT PARAMETERS ARE ENUM VALUES RATHER THAN STRINGS, BUT
     /// IT MIGHT HAVE A USE BEYOND SUCH THINGS.  DEFINITELY SHOULDN'T BE USED OVER THE GETTERS, THAT WOULD BE SILLY.
+    #[inline]
     pub fn marker_value(&self, marker: CountMarkers) -> V {
         match marker {
             CountMarkers::Anchor =>         { self.anchor }
@@ -744,6 +1078,7 @@ impl<V: CountValue> Count<V> {
 /// panic_if_value_is_out_of_range(5, 1, 10);    // Passes
 /// panic_if_value_is_out_of_range(15, 1, 10);   // Panics
 /// ```
+#[inline]
 fn panic_if_value_is_out_of_range<V: CountValue>(name_of_value: &str, value: V, minimum: V, maximum: V) {
     assert!(
         value >= minimum && value <= maximum,
@@ -753,6 +1088,7 @@ fn panic_if_value_is_out_of_range<V: CountValue>(name_of_value: &str, value: V, 
 }
 
 ///
+#[inline]
 fn panic_if_lower_bound_is_greater_than_upper_bound<V: CountValue>(lower_bound: V, upper_bound: V) {
     if lower_bound > upper_bound {
         panic!(
@@ -763,6 +1099,7 @@ fn panic_if_lower_bound_is_greater_than_upper_bound<V: CountValue>(lower_bound: 
 }
 
 ///
+#[inline]
 fn panic_if_upper_bound_is_less_than_lower_bound<V: CountValue>(lower_bound: V, upper_bound: V) {
     if upper_bound < lower_bound {
         panic!(
@@ -773,6 +1110,7 @@ fn panic_if_upper_bound_is_less_than_lower_bound<V: CountValue>(lower_bound: V, 
 }
 
 ///
+#[inline]
 fn panic_if_is_nan<V: CountValue>(name_of_value: &str, name_of_action: &str, value: V) {
     if value.is_nan() {
         panic!(
