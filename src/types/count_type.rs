@@ -524,20 +524,6 @@ impl CountValue for f32 {
 
 
 
-// ################################### CountDiffCaster TRAIT #################################### //
-///
-pub trait CountDiffCaster {
-    fn from_f64(value: f64) -> Self;
-}
-impl CountDiffCaster for f64 {
-    fn from_f64(value: f64) -> Self { value }
-}
-impl CountDiffCaster for i64 {
-    fn from_f64(value: f64) -> Self { value as i64 }
-}
-
-
-
 // ##################################### CountMarkers ENUM ###################################### //
 ///
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -571,7 +557,7 @@ impl<V: CountValue> Default for Count<V> {
     fn default() -> Self {
         Self {
             anchor:                 V::from_i64(0),
-            lower_bound:            V::from_i64(0),
+            lower_bound:            V::MIN,
             upper_bound:            V::MAX,
             current_value:          V::from_i64(0),
             is_lower_bound_active:  true,
@@ -593,35 +579,80 @@ impl<V: CountValue> Count<V> {
     ) -> Self {
 
         // PANIC EVALUATION
-        // Panic if a passed value for anchor, current_value, lower_bound, or upper_bound is NaN.
-        panic_if_is_nan("anchor", "constructing", anchor);
-        panic_if_is_nan("current_value", "constructing", current_value);
-        panic_if_is_nan("lower_bound", "constructing", lower_bound);
-        panic_if_is_nan("upper_bound", "constructing", upper_bound);
-
-        // PANIC EVALUATION
-        // Panic if either boundary is being constructed with literals that don't match their definition.
-        panic_if_lower_bound_is_greater_than_upper_bound(lower_bound, upper_bound);
-        panic_if_upper_bound_is_less_than_lower_bound(lower_bound, upper_bound);
-
-        // PANIC EVALUATION
-        // Panic if current_value or anchor are being constructed with literals outside the active boundaries.
-        let active_lower_bound = if is_lower_bound_active { lower_bound } else { V::MIN };
-        let active_upper_bound = if is_upper_bound_active { upper_bound } else { V::MAX };
-        panic_if_value_is_out_of_range("current_value", current_value, active_lower_bound, active_upper_bound);
-        panic_if_value_is_out_of_range("anchor", anchor, active_lower_bound, active_upper_bound);
+        panic_if_construction_is_invalid(
+            anchor,
+            current_value,
+            lower_bound,
+            upper_bound,
+            is_lower_bound_active,
+            is_upper_bound_active
+        );
 
         Self {
             anchor,
+            current_value,
             lower_bound,
             upper_bound,
-            current_value,
             is_lower_bound_active,
             is_upper_bound_active,
         }
     }
 
+    /// PANIC EVALUATION ACCOUNTS FOR WHICH BOUNDARIES ARE ACTIVE
+    pub fn new_with_active_bounds(
+        anchor:         V,
+        current_value:  V,
+        lower_bound:    V,
+        upper_bound:    V,
+    ) -> Self {
 
+        // PANIC EVALUATION
+        panic_if_construction_is_invalid(
+            anchor,
+            current_value,
+            lower_bound,
+            upper_bound,
+            true,
+            true
+        );
+
+        Self {
+            anchor,
+            current_value,
+            lower_bound,
+            upper_bound,
+            is_lower_bound_active: true,
+            is_upper_bound_active: true,
+        }
+    }
+
+    /// PANIC EVALUATION ACCOUNTS FOR WHICH BOUNDARIES ARE ACTIVE
+    pub fn new_with_inactive_bounds(
+        anchor:         V,
+        current_value:  V,
+        lower_bound:    V,
+        upper_bound:    V,
+    ) -> Self {
+
+        // PANIC EVALUATION
+        panic_if_construction_is_invalid(
+            anchor,
+            current_value,
+            lower_bound,
+            upper_bound,
+            false,
+            false
+        );
+
+        Self {
+            anchor,
+            current_value,
+            lower_bound,
+            upper_bound,
+            is_lower_bound_active: false,
+            is_upper_bound_active: false,
+        }
+    }
 
     // ##################################### GETTERS ########################################## //
     ///
@@ -662,10 +693,9 @@ impl<V: CountValue> Count<V> {
 
     ///
     #[inline]
-    pub fn is_double_bounded(&self) -> bool {
+    pub fn is_double_bound(&self) -> bool {
         self.is_lower_bound_active && self.is_upper_bound_active
     }
-
 
 
 
@@ -1157,4 +1187,30 @@ fn panic_if_is_nan<V: CountValue>(name_of_value: &str, name_of_action: &str, val
             "\x1b[31m", "\x1b[0m",
         );
     }
+}
+
+///
+fn panic_if_construction_is_invalid<V: CountValue>(
+    anchor: V,
+    current_value: V,
+    lower_bound: V,
+    upper_bound: V,
+    is_lower_bound_active: bool,
+    is_upper_bound_active: bool,
+) {
+    // Panic if a passed value for anchor, current_value, lower_bound, or upper_bound is NaN.
+    panic_if_is_nan("anchor", "constructing", anchor);
+    panic_if_is_nan("current_value", "constructing", current_value);
+    panic_if_is_nan("lower_bound", "constructing", lower_bound);
+    panic_if_is_nan("upper_bound", "constructing", upper_bound);
+
+    // Panic if either boundary is being constructed with literals that don't match their definition.
+    panic_if_lower_bound_is_greater_than_upper_bound(lower_bound, upper_bound);
+    panic_if_upper_bound_is_less_than_lower_bound(lower_bound, upper_bound);
+
+    // Panic if current_value or anchor are being constructed with literals outside the active boundaries.
+    let active_lower_bound = if is_lower_bound_active { lower_bound } else { V::MIN };
+    let active_upper_bound = if is_upper_bound_active { upper_bound } else { V::MAX };
+    panic_if_value_is_out_of_range("current_value", current_value, active_lower_bound, active_upper_bound);
+    panic_if_value_is_out_of_range("anchor", anchor, active_lower_bound, active_upper_bound);
 }
