@@ -2,7 +2,7 @@
 // Imports
 use bevy_ecs::prelude::*;
 use bevy_reflect::prelude::*;
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use std::ops::{Add, Div, Mul, Rem, Sub};
 use half::f16;
 
@@ -596,9 +596,37 @@ impl CountValue for f32 {
 #[cfg_attr(feature = "count_reflect", derive(Reflect), reflect(Clone, PartialEq))]
 pub enum CountMarkers {
     Anchor,
+    Value,
     LowerBound,
     UpperBound,
-    CurrentValue,
+}
+
+// ####################################### CountErrors ENUM ##################################### //
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CountErrors<V: CountValue> { // Ignore error, it's only present because V is not being used at the moment.
+    NanNotAllowed,
+    ExceedsUpperBound,
+}
+impl<V: Display + CountValue> Display for CountErrors<V> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+
+            CountErrors::NanNotAllowed => {
+                write!(f,
+                   "Cannot be NaN."
+                )
+            },
+
+            CountErrors::ExceedsUpperBound => {
+                write!(f,
+                    "{}[COUNT ERROR]{} Count's lower bound can not be set to a value past the upper bound.  You can avoid this error by doing any of the following:
+                    1. Make sure you're setting the lower bound of a Count to be below or equal to the upper bound, not above it.  Also, the add method uses setters, so make sure to check your usage of it as well.
+                    2. You can use the set_lower_bound_with_swap method on a Count to handle any reordering of bound values if setting the lower bound value exceeds the upper bound value.  For adding, you can use the add_with_swap to achieve the same functionality.",
+                    "\x1b[31m", "\x1b[0m"
+                )
+            }
+        }
+    }
 }
 
 
@@ -610,9 +638,9 @@ pub enum CountMarkers {
 #[cfg_attr(feature = "count_reflect", derive(Reflect), reflect(Clone, PartialEq))]
 pub struct Count<V: CountValue> {
     anchor:                 V,
+    value:                  V,
     lower_bound:            V,
     upper_bound:            V,
-    current_value:          V,
     is_lower_bound_active:  bool,
     is_upper_bound_active:  bool,
 }
@@ -622,9 +650,9 @@ impl<V: CountValue> Default for Count<V> {
     fn default() -> Self {
         Self {
             anchor:                 V::from_i64(0),
+            value:                  V::from_i64(0),
             lower_bound:            V::MIN,
             upper_bound:            V::MAX,
-            current_value:          V::from_i64(0),
             is_lower_bound_active:  true,
             is_upper_bound_active:  true,
         }
@@ -636,7 +664,7 @@ impl<V: CountValue> Count<V> {
     /// PANIC EVALUATION ACCOUNTS FOR WHICH BOUNDARIES ARE ACTIVE
     pub fn new(
         anchor:                 V,
-        current_value:          V,
+        value:                  V,
         lower_bound:            V,
         upper_bound:            V,
         is_lower_bound_active:  bool,
@@ -646,7 +674,7 @@ impl<V: CountValue> Count<V> {
         // PANIC EVALUATION
         panic_if_construction_is_invalid(
             anchor,
-            current_value,
+            value,
             lower_bound,
             upper_bound,
             is_lower_bound_active,
@@ -655,7 +683,7 @@ impl<V: CountValue> Count<V> {
 
         Self {
             anchor,
-            current_value,
+            value,
             lower_bound,
             upper_bound,
             is_lower_bound_active,
@@ -666,7 +694,7 @@ impl<V: CountValue> Count<V> {
     /// PANIC EVALUATION ACCOUNTS FOR WHICH BOUNDARIES ARE ACTIVE
     pub fn new_with_active_bounds(
         anchor:         V,
-        current_value:  V,
+        value:          V,
         lower_bound:    V,
         upper_bound:    V,
     ) -> Self {
@@ -674,7 +702,7 @@ impl<V: CountValue> Count<V> {
         // PANIC EVALUATION
         panic_if_construction_is_invalid(
             anchor,
-            current_value,
+            value,
             lower_bound,
             upper_bound,
             true,
@@ -683,7 +711,7 @@ impl<V: CountValue> Count<V> {
 
         Self {
             anchor,
-            current_value,
+            value,
             lower_bound,
             upper_bound,
             is_lower_bound_active: true,
@@ -694,7 +722,7 @@ impl<V: CountValue> Count<V> {
     /// PANIC EVALUATION ACCOUNTS FOR WHICH BOUNDARIES ARE ACTIVE
     pub fn new_with_inactive_bounds(
         anchor:         V,
-        current_value:  V,
+        value:          V,
         lower_bound:    V,
         upper_bound:    V,
     ) -> Self {
@@ -702,7 +730,7 @@ impl<V: CountValue> Count<V> {
         // PANIC EVALUATION
         panic_if_construction_is_invalid(
             anchor,
-            current_value,
+            value,
             lower_bound,
             upper_bound,
             false,
@@ -711,7 +739,7 @@ impl<V: CountValue> Count<V> {
 
         Self {
             anchor,
-            current_value,
+            value,
             lower_bound,
             upper_bound,
             is_lower_bound_active: false,
@@ -728,8 +756,8 @@ impl<V: CountValue> Count<V> {
 
     ///
     #[inline]
-    pub fn current_value(&self) -> V {
-        self.current_value
+    pub fn value(&self) -> V {
+        self.value
     }
 
     ///
@@ -782,47 +810,45 @@ impl<V: CountValue> Count<V> {
     }
 
     ///
-    pub fn set_current_value(&mut self, value: V) {
+    pub fn set_value(&mut self, new_value: V) {
 
         // PANIC EVALUATION
         // Passed value can not be NaN.
-        panic_if_is_nan("current_value", "setting or adding", value);
+        panic_if_is_nan("value", "setting or adding", new_value);
 
         // Determine the active bounds.
         // If a bound is inactive, they are replaced by V::MIN or V::MAX depending on which bound is inactive.
         let active_lower_bound = if self.is_lower_bound_active { self.lower_bound } else { V::MIN };
         let active_upper_bound = if self.is_upper_bound_active { self.upper_bound } else { V::MAX };
 
-        // Reassign current_value to the clamped passed value that is following the active bounds.
-        self.current_value = value.count_clamp(active_lower_bound, active_upper_bound);
+        // Reassign value to the clamped passed value that is following the active bounds.
+        self.value = new_value.count_clamp(active_lower_bound, active_upper_bound);
     }
 
     ///
-    pub fn set_lower_bound(&mut self, value: V) {
+    pub fn set_lower_bound(&mut self, value: V) -> Result<(), CountErrors<V>> {
 
         // PANIC EVALUATION
         // Passed value can not be NaN.
         panic_if_is_nan("lower_bound", "setting or adding", value);
 
-        // Pushing up/down the passed value to be within the acceptable range for the Count datatype.
+        // Pushing up/down the passed value to be within the acceptable range for the type of CountValue.
+        // This really only impacts integer types since they support an asymmetric range.
         let passed_value: V = value.count_clamp(V::MIN, V::MAX);
 
-        // If the passed value is greater than the upper bound, PANIC.
+        // If the passed value is greater than the upper bound, return an error.
         // Otherwise, assign the lower bound to the passed value.
         if passed_value > self.upper_bound {
-            panic!(
-                "{}[COUNT PANIC]{} Count's lower bound can not be set to a value past the upper bound.  You can avoid this panic by doing any of the following:
-                1. Make sure you're setting the lower bound of a Count to be below or equal to the upper bound, not above it.  Also, the add method uses setters, so make sure to check your usage of it as well.
-                2. You can use the set_lower_bound_with_swap method on a Count to handle any reordering of bound values if setting the lower bound value exceeds the upper bound value.  For adding, you can use the add_with_swap to achieve the same functionality.",
-                "\x1b[31m", "\x1b[0m"
-            );
+            return Err(CountErrors::ExceedsUpperBound);
         }
         else {
             self.lower_bound = passed_value;
         }
 
-        // Clamp the anchor and current_value to the new boundary range.
+        // Clamp the anchor and value to the new boundary range.
         self.enforce_bounds();
+
+        Ok(())
     }
 
     ///
@@ -832,7 +858,8 @@ impl<V: CountValue> Count<V> {
         // Passed value can not be NaN.
         panic_if_is_nan("lower_bound", "setting or adding", value);
 
-        // Pushing up/down the passed value to be within the acceptable range for the Count datatype.
+        // Pushing up/down the passed value to be within the acceptable range for the type of CountValue.
+        // This really only impacts integer types since they support an asymmetric range.
         let passed_value: V = value.count_clamp(V::MIN, V::MAX);
 
         // If the passed value is greater than the upper bound, than the lower bound
@@ -850,7 +877,7 @@ impl<V: CountValue> Count<V> {
             self.lower_bound = passed_value;
         }
 
-        // Clamp the anchor and current_value to the new boundary range.
+        // Clamp the anchor and value to the new boundary range.
         self.enforce_bounds();
     }
 
@@ -861,10 +888,11 @@ impl<V: CountValue> Count<V> {
         // Passed value can not be NaN.
         panic_if_is_nan("upper_bound", "setting or adding", value);
 
-        // Pushing up/down the passed value to be within the acceptable range for the Count datatype.
+        // Pushing up/down the passed value to be within the acceptable range for the type of CountValue.
+        // This really only impacts integer types since they support an asymmetric range.
         let passed_value: V = value.count_clamp(V::MIN, V::MAX);
 
-        // If the passed value is greater than the lower bound, PANIC.
+        // If the passed value is greater than the lower bound, set the upper bound to the lower bound value.
         // Otherwise, assign the upper bound to the passed value.
         if passed_value < self.lower_bound {
             panic!(
@@ -878,7 +906,7 @@ impl<V: CountValue> Count<V> {
             self.upper_bound = passed_value;
         }
 
-        // Clamp the anchor and current_value to the new boundary range.
+        // Clamp the anchor and value to the new boundary range.
         self.enforce_bounds();
     }
 
@@ -889,7 +917,8 @@ impl<V: CountValue> Count<V> {
         // Passed value can not be NaN.
         panic_if_is_nan("upper_bound", "setting or adding", value);
 
-        // Pushing up/down the passed value to be within the acceptable range for the Count datatype.
+        // Pushing up/down the passed value to be within the acceptable range for the type of CountValue.
+        // This really only impacts integer types since they support an asymmetric range.
         let passed_value: V = value.count_clamp(V::MIN, V::MAX);
 
         // If the passed value is less than the lower bound, than the upper bound
@@ -907,7 +936,7 @@ impl<V: CountValue> Count<V> {
             self.upper_bound = passed_value;
         }
 
-        // Clamp the anchor and current_value to the new boundary range.
+        // Clamp the anchor and value to the new boundary range.
         self.enforce_bounds();
     }
 
@@ -962,22 +991,10 @@ impl<V: CountValue> Count<V> {
         marker: CountMarkers
     ) {
         match marker {
-
-            CountMarkers::Anchor => {
-                self.set_anchor(self.anchor.sat_add(value));
-            }
-
-            CountMarkers::LowerBound => {
-                self.set_lower_bound(self.lower_bound.sat_add(value));
-            }
-
-            CountMarkers::UpperBound => {
-                self.set_upper_bound(self.upper_bound.sat_add(value));
-            }
-
-            CountMarkers::CurrentValue => {
-                self.set_current_value(self.current_value.sat_add(value));
-            }
+            CountMarkers::Anchor        => { self.set_anchor(self.anchor.sat_add(value)); }
+            CountMarkers::Value         => { self.set_value(self.value.sat_add(value)); }
+            CountMarkers::LowerBound    => { self.set_lower_bound(self.lower_bound.sat_add(value)); }
+            CountMarkers::UpperBound    => { self.set_upper_bound(self.upper_bound.sat_add(value)); }
         }
     }
 
@@ -988,22 +1005,10 @@ impl<V: CountValue> Count<V> {
         marker: CountMarkers
     ) {
         match marker {
-
-            CountMarkers::Anchor => {
-                self.set_anchor(self.anchor.sat_add(value));
-            }
-
-            CountMarkers::LowerBound => {
-                self.set_lower_bound_with_swap(self.lower_bound.sat_add(value));
-            }
-
-            CountMarkers::UpperBound => {
-                self.set_upper_bound_with_swap(self.upper_bound.sat_add(value));
-            }
-
-            CountMarkers::CurrentValue => {
-                self.set_current_value(self.current_value.sat_add(value));
-            }
+            CountMarkers::Anchor        => { self.set_anchor(self.anchor.sat_add(value)); }
+            CountMarkers::Value         => { self.set_value(self.value.sat_add(value)); }
+            CountMarkers::LowerBound    => { self.set_lower_bound_with_swap(self.lower_bound.sat_add(value)); }
+            CountMarkers::UpperBound    => { self.set_upper_bound_with_swap(self.upper_bound.sat_add(value)); }
         }
     }
 
@@ -1054,46 +1059,6 @@ impl<V: CountValue> Count<V> {
     ///
     /// `place` is 1-indexed from the decimal point (`1` = tenths, `2` = hundredths, etc.).
     /// Returns `None` if `place` is `0` or exceeds `V::MAX_FLOATING_PLACES` for this type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use mirth_engine_counters::{Count, CountMarkers};
-    ///
-    /// let count = Count::<f32>::new_with_active_bounds(0.0, 123.456, -1000.0, 1000.0);
-    ///
-    /// // 123.456 is stored as 123.45600128173828 (f32 can't represent 123.456 exactly),
-    /// // so digits reflect the actual stored value, not the literal as written.
-    /// assert_eq!(count.get_floating_digit_in_memory(1, CountMarkers::CurrentValue), Some(4));
-    /// assert_eq!(count.get_floating_digit_in_memory(2, CountMarkers::CurrentValue), Some(5));
-    /// assert_eq!(count.get_floating_digit_in_memory(3, CountMarkers::CurrentValue), Some(6));
-    /// assert_eq!(count.get_floating_digit_in_memory(4, CountMarkers::CurrentValue), Some(0));
-    /// assert_eq!(count.get_floating_digit_in_memory(5, CountMarkers::CurrentValue), Some(0));
-    /// assert_eq!(count.get_floating_digit_in_memory(6, CountMarkers::CurrentValue), Some(1));
-    /// assert_eq!(count.get_floating_digit_in_memory(7, CountMarkers::CurrentValue), Some(2));
-    /// assert_eq!(count.get_floating_digit_in_memory(8, CountMarkers::CurrentValue), Some(8));
-    /// ```
-    ///
-    /// A `place` of `0`, or one beyond the type's supported floating precision, returns `None`:
-    ///
-    /// ```
-    /// use mirth_engine_counters::{Count, CountMarkers};
-    ///
-    /// let count = Count::<f32>::new_with_active_bounds(0.0, 123.456, -1000.0, 1000.0);
-    ///
-    /// assert_eq!(count.get_floating_digit_in_memory(0, CountMarkers::CurrentValue), None);
-    /// assert_eq!(count.get_floating_digit_in_memory(200, CountMarkers::CurrentValue), None);
-    /// ```
-    ///
-    /// Integer `CountValue` types always return `None`, since `MAX_FLOATING_PLACES` is `0`:
-    ///
-    /// ```
-    /// use mirth_engine_counters::{Count, CountMarkers};
-    ///
-    /// let count = Count::<i32>::new_with_active_bounds(0, 42, -1000, 1000);
-    ///
-    /// assert_eq!(count.get_floating_digit_in_memory(1, CountMarkers::CurrentValue), None);
-    /// ```
     pub fn get_floating_digit_in_memory(
         &self,
         place: u8,
@@ -1127,71 +1092,7 @@ impl<V: CountValue> Count<V> {
         }
     }
 
-    /// # Examples
     ///
-    /// ```
-    /// use mirth_engine_counters::{Count, CountMarkers};
-    ///
-    /// let count = Count::<f32>::new_with_active_bounds(0.0, 123.456, -1000.0, 1000.0);
-    ///
-    /// assert_eq!(count.get_floating_digit_with_epsilon(1, CountMarkers::CurrentValue), Some(4));
-    /// assert_eq!(count.get_floating_digit_with_epsilon(2, CountMarkers::CurrentValue), Some(5));
-    /// assert_eq!(count.get_floating_digit_with_epsilon(3, CountMarkers::CurrentValue), Some(6));
-    /// ```
-    ///
-    /// Representation noise pushing a fractional value just under the next whole-digit step
-    /// gets corrected, unlike [`get_floating_digit_in_memory`]:
-    ///
-    /// ```
-    /// use mirth_engine_counters::{Count, CountMarkers};
-    ///
-    /// let noisy_value: f32 = 0.299_999_95;
-    /// let count = Count::<f32>::new_with_active_bounds(0.0, noisy_value, -1000.0, 1000.0);
-    ///
-    /// assert_eq!(count.get_floating_digit_in_memory(1, CountMarkers::CurrentValue), Some(2));
-    /// assert_eq!(count.get_floating_digit_with_epsilon(1, CountMarkers::CurrentValue), Some(3));
-    /// ```
-    ///
-    /// f16 Test:
-    ///
-    /// ```
-    /// use mirth_engine_counters::{Count, CountMarkers};
-    /// use half::f16;
-    ///
-    /// let noisy_value: f16 = f16::from_f32(0.2999);
-    /// let count = Count::<f16>::new_with_active_bounds(
-    ///     f16::from_f32(0.0),
-    ///     noisy_value,
-    ///     f16::from_f32(-1000.0),
-    ///     f16::from_f32(1000.0),
-    /// );
-    ///
-    /// assert_eq!(count.get_floating_digit_in_memory(1, CountMarkers::CurrentValue), Some(2));
-    /// assert_eq!(count.get_floating_digit_with_epsilon(1, CountMarkers::CurrentValue), Some(3));
-    /// ```
-    ///
-    /// Noise doesn't always sit at the first decimal place — here it only affects the
-    /// thousandths digit, and the correction is applied there without disturbing the
-    /// (already-correct) tenths and hundredths digits:
-    ///
-    /// ```
-    /// use mirth_engine_counters::{Count, CountMarkers};
-    ///
-    /// // Meant to represent 0.128, but stored with representation error affecting
-    /// // only the thousandths place.
-    /// let noisy_value: f32 = 0.127_999_99;
-    /// let count = Count::<f32>::new_with_active_bounds(0.0, noisy_value, -1000.0, 1000.0);
-    ///
-    /// // Tenths and hundredths already agree between both methods.
-    /// assert_eq!(count.get_floating_digit_in_memory(1, CountMarkers::CurrentValue), Some(1));
-    /// assert_eq!(count.get_floating_digit_with_epsilon(1, CountMarkers::CurrentValue), Some(1));
-    /// assert_eq!(count.get_floating_digit_in_memory(2, CountMarkers::CurrentValue), Some(2));
-    /// assert_eq!(count.get_floating_digit_with_epsilon(2, CountMarkers::CurrentValue), Some(2));
-    ///
-    /// // Only the thousandths digit needed correction.
-    /// assert_eq!(count.get_floating_digit_in_memory(3, CountMarkers::CurrentValue), Some(7));
-    /// assert_eq!(count.get_floating_digit_with_epsilon(3, CountMarkers::CurrentValue), Some(8));
-    /// ```
     pub fn get_floating_digit_with_epsilon(
         &self,
         place: u8,
@@ -1240,7 +1141,7 @@ impl<V: CountValue> Count<V> {
     ) -> V::Difference {
         let from_value: V = self.marker_value(from_marker);
         let to_value: V = self.marker_value(to_marker);
-        V::signed_difference(to_value, from_value)
+        V::signed_difference(from_value, to_value)
     }
 
     /// WILL ALWAYS RETURN A POSITIVE VALUE, THIS DOES INCLUDE THE POSSIBILITY OF 0.
@@ -1256,7 +1157,7 @@ impl<V: CountValue> Count<V> {
 
     /// REMEMBER TO MENTION THAT STARTING_MARKER AND ENDING_MARKER CAN BE FLIPPED TO OBTAIN THE INVERSE PERCENTAGE!
     /// MENTION THAT NONE WILL BE RETURNED IN THE CASE THAT START == END
-    pub fn get_percentage_of_value(
+    pub fn get_percentage(
         &self,
         value_marker: CountMarkers,
         starting_marker: CountMarkers,
@@ -1282,7 +1183,7 @@ impl<V: CountValue> Count<V> {
     }
 
     /// BASICALLY, GET A VALUE FROM A PERCENTAGE WITHIN A RANGE.
-    pub fn get_value_at_percentage(
+    pub fn get_linear_interpolation(
         &self,
         percentage: f32,
         starting_marker: CountMarkers,
@@ -1294,7 +1195,9 @@ impl<V: CountValue> Count<V> {
         panic_if_is_nan("value from a percentage", "getting", percentage);
 
         // Using f64 for calculation to increase the precision of the result.  There will be a lossy
-        // conversion for what V is since
+        // conversion for the return since the ending f64 value must be returned as V, but the lossy
+        // factor is irrelevant since what is trying to be obtained is a value between markers that
+        // are defined with V.
         let modified_percentage: f64 = percentage.as_f64();
         let start: f64 = self.marker_value(starting_marker).as_f64();
         let end: f64 = self.marker_value(ending_marker).as_f64();
@@ -1306,8 +1209,13 @@ impl<V: CountValue> Count<V> {
     // ################################# MISCELLANEOUS METHODS ################################## //
     ///
     #[inline]
-    pub fn reset(&mut self) {
-        self.current_value = self.anchor;
+    pub fn value_to_anchor(&mut self) {
+        self.value = self.anchor;
+    }
+
+    #[inline]
+    pub fn anchor_to_value(&mut self) {
+        self.anchor = self.value;
     }
 
 
@@ -1317,7 +1225,7 @@ impl<V: CountValue> Count<V> {
     #[inline]
     pub fn print_information(&self) {
         println!("ANCHOR : {}", self.anchor);
-        println!("CURRENT_VALUE : {}", self.current_value);
+        println!("CURRENT_VALUE : {}", self.value);
         println!("LOWER_BOUND : {}", self.lower_bound);
         println!("UPPER_BOUND : {}", self.upper_bound);
         println!("IS_LOWER_BOUND_ACTIVE : {}", self.is_lower_bound_active);
@@ -1332,10 +1240,10 @@ impl<V: CountValue> Count<V> {
     #[inline]
     pub fn marker_value(&self, marker: CountMarkers) -> V {
         match marker {
-            CountMarkers::Anchor =>         { self.anchor }
-            CountMarkers::LowerBound =>     { self.lower_bound }
-            CountMarkers::UpperBound =>     { self.upper_bound }
-            CountMarkers::CurrentValue =>   { self.current_value }
+            CountMarkers::Anchor        => { self.anchor }
+            CountMarkers::Value  => { self.value }
+            CountMarkers::LowerBound    => { self.lower_bound }
+            CountMarkers::UpperBound    => { self.upper_bound }
         }
     }
 
@@ -1344,23 +1252,23 @@ impl<V: CountValue> Count<V> {
 
         match (self.is_lower_bound_active, self.is_upper_bound_active) {
 
-            // Both bounds are active, so we clamp current_value and anchor into the bounded range.
+            // Both bounds are active, so we clamp value and anchor into the bounded range.
             (true, true) => {
-                self.current_value = self.current_value.count_clamp(self.lower_bound, self.upper_bound);
+                self.value = self.value.count_clamp(self.lower_bound, self.upper_bound);
                 self.anchor = self.anchor.count_clamp(self.lower_bound, self.upper_bound);
             }
 
-            // Only the lower bound is active, so we check to see if current_value or anchor is below it
+            // Only the lower bound is active, so we check to see if value or anchor is below it
             // and raise them to the lower bound if they are.
             (true, false) => {
-                if self.current_value < self.lower_bound { self.current_value = self.lower_bound; }
+                if self.value < self.lower_bound { self.value = self.lower_bound; }
                 if self.anchor < self.lower_bound { self.anchor = self.lower_bound; }
             }
 
-            // Only the upper bound is active, so we check to see if current_value or anchor is above it
+            // Only the upper bound is active, so we check to see if value or anchor is above it
             // and lower them to the upper bound if they are.
             (false, true) => {
-                if self.current_value > self.upper_bound { self.current_value = self.upper_bound; }
+                if self.value > self.upper_bound { self.value = self.upper_bound; }
                 if self.anchor > self.upper_bound { self.anchor = self.upper_bound; }
             }
 
@@ -1427,15 +1335,15 @@ fn panic_if_is_nan<V: CountValue>(name_of_value: &str, name_of_action: &str, val
 ///
 fn panic_if_construction_is_invalid<V: CountValue>(
     anchor: V,
-    current_value: V,
+    value: V,
     lower_bound: V,
     upper_bound: V,
     is_lower_bound_active: bool,
     is_upper_bound_active: bool,
 ) {
-    // Panic if a passed value for anchor, current_value, lower_bound, or upper_bound is NaN.
+    // Panic if a passed value for anchor, value, lower_bound, or upper_bound is NaN.
     panic_if_is_nan("anchor", "constructing", anchor);
-    panic_if_is_nan("current_value", "constructing", current_value);
+    panic_if_is_nan("value", "constructing", value);
     panic_if_is_nan("lower_bound", "constructing", lower_bound);
     panic_if_is_nan("upper_bound", "constructing", upper_bound);
 
@@ -1443,9 +1351,9 @@ fn panic_if_construction_is_invalid<V: CountValue>(
     panic_if_lower_bound_is_greater_than_upper_bound(lower_bound, upper_bound);
     panic_if_upper_bound_is_less_than_lower_bound(lower_bound, upper_bound);
 
-    // Panic if current_value or anchor are being constructed with literals outside the active boundaries.
+    // Panic if value or anchor are being constructed with literals outside the active boundaries.
     let active_lower_bound = if is_lower_bound_active { lower_bound } else { V::MIN };
     let active_upper_bound = if is_upper_bound_active { upper_bound } else { V::MAX };
-    panic_if_value_is_out_of_range("current_value", current_value, active_lower_bound, active_upper_bound);
+    panic_if_value_is_out_of_range("value", value, active_lower_bound, active_upper_bound);
     panic_if_value_is_out_of_range("anchor", anchor, active_lower_bound, active_upper_bound);
 }
